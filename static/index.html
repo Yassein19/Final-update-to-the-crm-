@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEAM Engineering CRM</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js and Lucide Icons via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <i data-lucide="activity" class="logo-icon"></i>
+                    <span class="logo-text">TEAM CRM</span>
+                </div>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="#" class="menu-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="menu-item" id="nav-inquiries" onclick="switchTab('inquiries')">
+                    <i data-lucide="file-text"></i>
+                    <span>Inquiries</span>
+                </a>
+                <a href="#" class="menu-item" id="nav-orders" onclick="switchTab('orders')">
+                    <i data-lucide="shopping-cart"></i>
+                    <span>Won Orders</span>
+                </a>
+                <a href="#" class="menu-item" id="nav-logs" onclick="switchTab('logs')">
+                    <i data-lucide="history"></i>
+                    <span>Activity Log</span>
+                </a>
+                <a href="#" class="menu-item" id="nav-trash" onclick="switchTab('trash')">
+                    <i data-lucide="trash-2"></i>
+                    <span>Trash Bin</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-sync btn-block" onclick="syncExcel()">
+                    <i data-lucide="refresh-cw"></i>
+                    <span>Sync to Excel</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-bar">
+                <div class="header-search">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="global-search" placeholder="Search across won orders, client reference, contact person..." oninput="onGlobalSearch(this.value)">
+                </div>
+                <div class="header-profile">
+                    <div class="stat-badge">
+                        <span class="badge-label">Active Value:</span>
+                        <span class="badge-val text-blue" id="header-active-val">$0</span>
+                    </div>
+                    <div class="stat-badge">
+                        <span class="badge-label">Won Value:</span>
+                        <span class="badge-val text-green" id="header-won-val">$0</span>
+                    </div>
+                    <div class="profile-avatar">
+                        <span>👤</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div id="tab-dashboard" class="content-section active">
+                <div class="section-header">
+                    <h1>CRM Pipeline Dashboard</h1>
+                    <p class="subtitle">Real-time tracking of engineering inquiries & sales pipeline outcomes.</p>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon bg-blue-trans"><i data-lucide="file-plus-2"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-label">Active Inquiries</span>
+                            <h2 class="metric-value" id="stats-active">0</h2>
+                            <span class="metric-sub" id="stats-active-val">$0 Value</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-green-trans"><i data-lucide="trophy"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-label">Won Orders</span>
+                            <h2 class="metric-value" id="stats-won">0</h2>
+                            <span class="metric-sub" id="stats-won-val">$0 Value</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-red-trans"><i data-lucide="thumbs-down"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-label">Lost Inquiries</span>
+                            <h2 class="metric-value" id="stats-lost">0</h2>
+                            <span class="metric-sub">Closed deals</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-grey-trans"><i data-lucide="x-circle"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-label">Declined</span>
+                            <h2 class="metric-value" id="stats-declined">0</h2>
+                            <span class="metric-sub">Not relevant</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Split layout: Charts & Alerts -->
+                <div class="dashboard-layout">
+                    <div class="dashboard-chart-box card">
+                        <h3>Pipeline Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="pipelineChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-alerts card">
+                        <h3>Critical Action Alerts</h3>
+                        
+                        <div class="alert-section">
+                            <h4>⚠️ Inquiries Due This Week</h4>
+                            <div class="alert-list" id="alerts-due-week">
+                                <div class="empty-alert">No urgent inquiries due this week.</div>
+                            </div>
+                        </div>
+
+                        <div class="alert-section mt-4">
+                            <h4>🚚 Orders Near Delivery Date</h4>
+                            <div class="alert-list" id="alerts-delivery">
+                                <div class="empty-alert">No orders close to delivery deadlines.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inquiries Content -->
+            <div id="tab-inquiries" class="content-section">
+                <div class="section-header flex-between">
+                    <div>
+                        <h1>Inquiries Pipeline</h1>
+                        <p class="subtitle">Manage all client requests and track their commercial status.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openNewInquiryModal()">
+                        <i data-lucide="plus"></i> New Inquiry
+                    </button>
+                </div>
+
+                <!-- Table Filter Ribbon -->
+                <div class="filter-ribbon">
+                    <div class="filter-group">
+                        <label>Pipeline Stage:</label>
+                        <select id="inquiry-filter-status" onchange="loadInquiries()">
+                            <option value="">All Stages</option>
+                            <option value="Active">Active Inquiries</option>
+                            <option value="Lost">Lost Inquiries</option>
+                            <option value="Declined">Declined Inquiries</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Filter Client:</label>
+                        <select id="inquiry-filter-client" onchange="loadInquiries()">
+                            <option value="">All Clients</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Filter Principal:</label>
+                        <select id="inquiry-filter-principal" onchange="loadInquiries()">
+                            <option value="">All Principals</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="table-container card">
+                    <table class="data-table" id="inquiries-table">
+                        <thead>
+                            <tr>
+                                <th>Inquiry Date</th>
+                                <th>Client / Principal</th>
+                                <th>Inquiry Reference</th>
+                                <th>Quotation Ref</th>
+                                <th>Value</th>
+                                <th>Stage</th>
+                                <th>Due Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inquiries-list">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Won Orders Content -->
+            <div id="tab-orders" class="content-section">
+                <div class="section-header">
+                    <h1>Won Orders</h1>
+                    <p class="subtitle">Extended technical and delivery specifications for won contracts.</p>
+                </div>
+
+                <div class="filter-ribbon">
+                    <div class="filter-group">
+                        <label>Source Sheet:</label>
+                        <select id="order-filter-sheet" onchange="loadOrders()">
+                            <option value="">All Sheets</option>
+                            <option value="Orders">Orders</option>
+                            <option value="LESER's Orders">LESER's Orders</option>
+                            <option value=" Bartec Orders">Bartec Orders</option>
+                            <option value=" Bartec Orders 2025">Bartec Orders 2025</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="table-container card">
+                    <table class="data-table" id="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Order Date</th>
+                                <th>Order Number</th>
+                                <th>Client / Principal</th>
+                                <th>Expected Delivery</th>
+                                <th>Order Value</th>
+                                <th>Team Comm.</th>
+                                <th>Payment Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-list">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Activity Log Content -->
+            <div id="tab-logs" class="content-section">
+                <div class="section-header">
+                    <h1>Activity Audit Log</h1>
+                    <p class="subtitle">Chronological record of status changes and user modifications.</p>
+                </div>
+
+                <div class="card timeline-card">
+                    <div class="timeline" id="activity-timeline">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Soft Deleted Content -->
+            <div id="tab-trash" class="content-section">
+                <div class="section-header">
+                    <h1>Trash Bin</h1>
+                    <p class="subtitle">Recover soft-deleted inquiries. Deleted items are hidden from the primary pipeline.</p>
+                </div>
+
+                <div class="table-container card">
+                    <table class="data-table" id="trash-table">
+                        <thead>
+                            <tr>
+                                <th>Inquiry Date</th>
+                                <th>Client / Principal</th>
+                                <th>Inquiry Reference</th>
+                                <th>Quotation Reference</th>
+                                <th>Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trash-list">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: Create New Inquiry -->
+    <div id="modal-inquiry" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-inquiry-title">New Inquiry</h3>
+                <button class="modal-close" onclick="closeModal('modal-inquiry')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-inquiry" onsubmit="saveInquiry(event)">
+                    <input type="hidden" id="inq-id">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">Inquiry Date</label>
+                            <input type="date" id="inq-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Due Date</label>
+                            <input type="date" id="inq-due">
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Client Name</label>
+                            <input type="text" id="inq-client" placeholder="e.g. Enppi" required list="client-list-dl">
+                            <datalist id="client-list-dl"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Principal Name</label>
+                            <input type="text" id="inq-principal" placeholder="e.g. Bartec" required list="principal-list-dl">
+                            <datalist id="principal-list-dl"></datalist>
+                        </div>
+                        <div class="form-group col-span-2">
+                            <label class="required">Inquiry Reference / Project Details</label>
+                            <textarea id="inq-ref" placeholder="Project details or tender details..." rows="2" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Quotation Reference</label>
+                            <input type="text" id="inq-quotation" placeholder="e.g. Q21021759/25">
+                        </div>
+                        <div class="form-group">
+                            <label>Value (USD/EUR)</label>
+                            <input type="number" step="0.01" id="inq-value" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Submission Method</label>
+                            <select id="inq-submission">
+                                <option value="email">Email</option>
+                                <option value="Sealed Envelopes">Sealed Envelopes</option>
+                                <option value="Sealed Envelopes & email">Sealed Envelopes & email</option>
+                                <option value="Portal">Client Portal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Bid Bond Value</label>
+                            <input type="text" id="inq-bid-bond" placeholder="e.g. 2% of value / 1000 USD">
+                        </div>
+                        <div class="form-group">
+                            <label>Performance Bond</label>
+                            <input type="text" id="inq-perf-bond" placeholder="e.g. 10% / Not Required">
+                        </div>
+                        <div class="form-group">
+                            <label>Quotation Validity</label>
+                            <input type="text" id="inq-validity" placeholder="e.g. 3 months / 31/12/2026">
+                        </div>
+                        <div class="form-group">
+                            <label>Expiration Date</label>
+                            <input type="date" id="inq-expire">
+                        </div>
+                        <div class="form-group">
+                            <label>Contact Person</label>
+                            <input type="text" id="inq-contact" placeholder="e.g. Eng. Sameh Mostafa">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-inquiry')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Inquiry</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: View Details & Comments Timeline -->
+    <div id="modal-details" class="modal-overlay">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <h3>Inquiry Detail & Remarks Timeline</h3>
+                <button class="modal-close" onclick="closeModal('modal-details')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="details-layout">
+                    <!-- Left: fields overview -->
+                    <div class="details-fields">
+                        <h4 class="details-section-title">Specifications</h4>
+                        <div class="details-grid">
+                            <div><strong>Client:</strong> <span id="detail-client">-</span></div>
+                            <div><strong>Principal:</strong> <span id="detail-principal">-</span></div>
+                            <div><strong>Inquiry Date:</strong> <span id="detail-date">-</span></div>
+                            <div><strong>Due Date:</strong> <span id="detail-due">-</span></div>
+                            <div><strong>Value:</strong> <span id="detail-value">-</span></div>
+                            <div><strong>Submission:</strong> <span id="detail-submission">-</span></div>
+                            <div><strong>Bid Bond:</strong> <span id="detail-bid-bond">-</span></div>
+                            <div><strong>Perf. Bond:</strong> <span id="detail-perf-bond">-</span></div>
+                            <div><strong>Validity:</strong> <span id="detail-validity">-</span></div>
+                            <div><strong>Expiration:</strong> <span id="detail-expire">-</span></div>
+                            <div><strong>Contact:</strong> <span id="detail-contact">-</span></div>
+                            <div><strong>Stage Status:</strong> <span id="detail-status" class="status-badge">-</span></div>
+                        </div>
+                        <div class="mt-4">
+                            <strong>Inquiry Reference:</strong>
+                            <div class="details-block" id="detail-ref">-</div>
+                        </div>
+                        <div class="mt-4">
+                            <strong>Quotation Reference:</strong>
+                            <div class="details-block" id="detail-quotation">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Comment Timeline -->
+                    <div class="details-comments">
+                        <h4 class="details-section-title">Comments & Remarks History</h4>
+                        <div class="comments-list" id="detail-comments-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                        <div class="comment-input-box">
+                            <textarea id="new-comment-text" placeholder="Add a new update or progress note..." rows="2"></textarea>
+                            <button class="btn btn-primary btn-sm mt-2" onclick="submitNewComment()">Add Comment</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Won Order Form (Triggered on transition to Won) -->
+    <div id="modal-order-transition" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Order Information (Transition to Won)</h3>
+                <button class="modal-close" onclick="closeModal('modal-order-transition')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-order-transition" onsubmit="saveOrderTransition(event)">
+                    <input type="hidden" id="trans-inq-id">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">Order Number</label>
+                            <input type="text" id="ord-number" placeholder="e.g. 3897-200-520-01-50" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Order Date</label>
+                            <input type="date" id="ord-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Order Value (Base)</label>
+                            <input type="number" step="0.01" id="ord-val" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Additionals (Freight, Insurance, etc.)</label>
+                            <input type="number" step="0.01" id="ord-additionals" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Total Order Value</label>
+                            <input type="number" step="0.01" id="ord-total" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Order Confirmation Number</label>
+                            <input type="text" id="ord-conf-num" placeholder="e.g. 20668547">
+                        </div>
+                        <div class="form-group">
+                            <label>TEAM Commission</label>
+                            <input type="text" id="ord-commission" placeholder="e.g. 5% / 1200 USD">
+                        </div>
+                        <div class="form-group">
+                            <label>Expected Delivery Date</label>
+                            <input type="date" id="ord-expected-delivery">
+                        </div>
+                        <div class="form-group col-span-2">
+                            <label>Delivery Terms & Period</label>
+                            <input type="text" id="ord-delivery-term" placeholder="e.g. FOB Italian Seaport, 6 Weeks">
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Method</label>
+                            <select id="ord-payment-method">
+                                <option value="CAD">CAD (Cash Against Documents)</option>
+                                <option value="L/C">Irrevocable Letter of Credit</option>
+                                <option value="Advance">Advance Payment</option>
+                                <option value="Net 30 days">Net 30 Days Wire</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Status</label>
+                            <select id="ord-payment-status">
+                                <option value="Order ready">Order ready</option>
+                                <option value="Paid">Paid</option>
+                                <option value="90% CAD paid">90% CAD paid</option>
+                                <option value="Order Supplied&#10;Paid">Order Supplied / Paid</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-order-transition')">Cancel</button>
+                        <button type="submit" class="btn btn-success">Mark Won & Save Order</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Banner for Async status messages -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

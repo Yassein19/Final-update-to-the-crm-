@@ -1,0 +1,105 @@
+Understanding What You Actually Have
+You have 4 sheets = 4 stages of a sales pipeline:
+Inquiries → (won?) → Won Orders
+          → (lost?) → Lost Inquiries
+          → (not relevant?) → Declined Inquiries
+It's a classic funnel — everything starts as an Inquiry and moves to one of 3 outcomes. This is the core logic your entire system is built around.
+
+Recommended Tech Stack
+LayerTechnologyWhyBackendFastAPIYou already know itDatabasePostgreSQLRelational data fits perfectly here (better than MongoDB for this case)FrontendReact + TailwindFast, clean UIAuthJWTSimple and solidExcel Syncopenpyxl / pandasImport existing sheetsHostingRailway / Render / VPSEasy deployment
+
+Why PostgreSQL over MongoDB here? Because your data is structured and relational — inquiries link to won orders, clients repeat across sheets, references link records. SQL handles this perfectly.
+
+
+Database Design
+Clients ──────────────────────────────┐
+Principals ───────────────────────────┤
+                                       ↓
+                                   Inquiries
+                                   (master table)
+                                       │
+                    ┌──────────────────┼──────────────────┐
+                    ↓                  ↓                   ↓
+             Won Orders          Lost Inquiries      Declined Inquiries
+             (extended data)     (status = lost)     (status = declined)
+Key idea: All 4 sheets share a base — they're all inquiries at different stages. So instead of 4 separate tables, you have:
+
+One inquiries table with a status field (Active / Won / Lost / Declined)
+One won_orders table that extends an inquiry when it becomes a won deal
+clients and principals as separate tables (avoid repeating names everywhere)
+
+
+Full Pipeline to Build It
+Phase 1 — Foundation
+├── Set up PostgreSQL schema
+├── Build FastAPI backend (models, routes, auth)
+└── Import existing Excel data via pandas script
+
+Phase 2 — Core CRUD
+├── Inquiries: Add / Edit / Delete / View
+├── Status transitions: Active → Won / Lost / Declined
+├── Won Orders: Extended form triggered on "Mark as Won"
+└── Filters: by status, date, client, principal
+
+Phase 3 — Smart Features
+├── Auto due-date alerts (days until delivery)
+├── Search across all records instantly
+├── Dashboard: pipeline overview, stats, counts
+└── Export back to Excel anytime
+
+Phase 4 — Polish
+├── User roles (admin / viewer / editor)
+├── Activity log (who changed what and when)
+├── Comments/updates per inquiry
+└── Mobile-friendly UI
+
+The Workflow for Users (How They'll Use It Daily)
+New inquiry arrives
+        ↓
+User opens CRM → clicks "New Inquiry"
+        ↓
+Fills form (all your columns as fields)
+        ↓
+Inquiry saved → appears in Inquiries table
+        ↓
+Time passes... user updates status
+        ↓
+    ┌───────────────────────────────┐
+    │  Declined? → moves to         │
+    │  Declined Inquiries (1 click) │
+    │                               │
+    │  Lost? → moves to             │
+    │  Lost Inquiries (1 click)     │
+    │                               │
+    │  Won? → triggers Won Order    │
+    │  form → fills extra fields    │
+    │  → moves to Won Orders        │
+    └───────────────────────────────┘
+        ↓
+Dashboard updates automatically
+
+The "Never Falls" Part — Reliability Rules
+
+Validation everywhere — no empty required fields, no wrong date formats
+Soft delete — never truly delete a record, just hide it (you can always recover)
+Audit log — every change is recorded with timestamp + user
+Database backups — daily automated backup of PostgreSQL
+Status transitions are controlled — you can't go from Declined → Won directly, must go back to Active first
+Input is typed — dates are datepickers, numbers are number fields, statuses are dropdowns — no free text where it shouldn't be
+
+
+What the UI Looks Like
+┌─────────────────────────────────────────────┐
+│  TEAM Engineering CRM                    👤  │
+├──────────┬──────────────────────────────────┤
+│          │  📊 Dashboard                    │
+│ Inquiries│  ┌─────┐ ┌─────┐ ┌─────┐ ┌────┐ │
+│          │  │ 124 │ │  38 │ │  19 │ │ 67 │ │
+│ Won      │  │Total│ │ Won │ │Lost │ │Dec │ │
+│ Orders   │  └─────┘ └─────┘ └─────┘ └────┘ │
+│          │                                  │
+│ Lost     │  ⚠️ 5 inquiries due this week    │
+│          │  ⚠️ 3 orders near delivery date  │
+│ Declined │                                  │
+│          │  [+ New Inquiry]  [🔍 Search]    │
+└──────────┴──────────────────────────────────┘
