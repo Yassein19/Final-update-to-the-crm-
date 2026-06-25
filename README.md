@@ -206,4 +206,8 @@ Or use the API endpoint:
 POST http://127.0.0.1:8000/api/sync/import
 ```
 
-> ⚠️ **Warning:** This overwrites all CRM data (including any new entries or comments added via the UI that have not been exported back to Excel first).
+# ⚠️ **Warning:** This overwrites all CRM data (including any new entries or comments added via the UI that have not been exported back to Excel first).
+
+# Team-engineering-CRM
+
+This repository contains my projects for the company team engineering
