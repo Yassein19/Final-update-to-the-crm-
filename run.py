@@ -49,9 +49,9 @@ def init_db_and_import():
     else:
         print("Database crm.db found. Skipping import.")
 
-def open_browser():
+def open_browser(port):
     time.sleep(1.5)
-    url = "http://127.0.0.1:8000"
+    url = f"http://127.0.0.1:{port}"
     print(f"Opening browser at {url}...")
     webbrowser.open(url)
 
@@ -60,10 +60,22 @@ if __name__ == "__main__":
     check_and_install_dependencies()
     init_db_and_import()
     
+    # Find available port
+    import socket
+    port = 8000
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                break
+            except OSError:
+                print(f"Port {port} is already in use. Trying port {port + 1}...")
+                port += 1
+    
     # Start web browser in a separate thread
-    threading.Thread(target=open_browser, daemon=True).start()
+    threading.Thread(target=open_browser, args=(port,), daemon=True).start()
     
     # Launch FastAPI Server
     import uvicorn
     print("Starting CRM Server. Press Ctrl+C to stop...")
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run("app.main:app", host="127.0.0.1", port=port, reload=False)

@@ -1,206 +1,174 @@
 # TEAM Engineering CRM
 
-A professional, self-contained **Sales Pipeline CRM** built for TEAM Engineering to manage engineering inquiries, track their commercial outcomes, and synchronise all data back to the existing `STATUS 2025-2026.xlsx` Excel file.
+A professional, self-contained **Sales Pipeline CRM** built for TEAM Engineering to manage engineering inquiries, track commercial outcomes, and synchronise all data back to the existing `STATUS 2025-2026.xlsx` Excel file.
 
 ---
 
-## 📋 What It Does
+## 📖 Non-Technical User Guide (How to Use)
 
-Your existing Excel workbook has 7 sheets that form a classic B2B sales funnel:
+This guide explains how to start, use, and sync the CRM without needing technical knowledge.
 
-```
-Inquiries ──→ Won Orders
-          ──→ Lost Inquiries
-          ──→ Declined Inquiries
-```
+### 1. How to Start the CRM
+To launch the CRM, you do not need to write code or open terminals:
+1. Locate the **`Team-engineering-CRM`** folder on your computer.
+2. Double-click the file named **`run.bat`** (the Windows Batch file).
+3. A black command window will open. It will automatically check for required software components, install them if missing, setup the database, and run the server.
+4. Your default web browser will open automatically and navigate to the CRM at **`http://127.0.0.1:8000`**.
 
-This CRM replaces manual Excel editing with a beautiful, browser-based interface — while keeping Excel as your source of truth through a two-way sync feature.
+> [!IMPORTANT]
+> **Do not close the black window while using the CRM.** That window is running the CRM server in the background. When you are finished, simply close the black window to shut down the server. Your data is safely saved.
 
 ---
 
-## ✨ Features
+### 2. Dashboard & Alerts
+When the CRM opens, you will see the **Dashboard**:
+- **Pipeline Statistics:** Instant counts of how many inquiries are *Active*, *Won*, *Lost*, or *Declined*.
+- **Financial Status:** Sums of active pipeline inquiry values and won order values.
+- **Urgent Alerts:** List of inquiries due this week and orders nearing expected delivery.
 
-| Feature                    | Description                                                                             |
-| -------------------------- | --------------------------------------------------------------------------------------- |
-| **Dashboard**              | Live pipeline counts, total active & won values, chart, and urgent alerts               |
-| **Inquiries Pipeline**     | Full CRUD with filters for stage, client, and principal                                 |
-| **Status Transitions**     | One-click transitions: Active → Won / Lost / Declined (with business rules enforcement) |
-| **Won Orders Form**        | Detailed order form auto-triggered on winning an inquiry                                |
-| **Comment Timeline**       | Chronological remarks log per inquiry (imported from Excel)                             |
-| **Activity Audit Log**     | System-tracked log of every status change and update                                    |
-| **Soft Delete + Recovery** | Deleted items go to Trash Bin and can be fully restored                                 |
-| **Global Search**          | Instant search across client, principal, references, order numbers                      |
-| **Excel Sync**             | One-click export writes the live database state back to `STATUS 2025-2026.xlsx`         |
-| **Auto-Import**            | On first launch, all 7 Excel sheets are automatically imported into the database        |
+---
+
+### 3. Managing the Sales Pipeline (Funnel)
+The CRM matches your sales funnel stages:
+- **Adding Inquiries:** Click the **`+ New Inquiry`** button. Fill in the client, principal, reference, values, and deadlines.
+- **Adding Update Comments:** Scroll to the bottom of any inquiry page to add comments. These are preserved chronologically as a history timeline.
+- **Moving Inquiries:**
+  - **Winning a Deal:** Click **`Mark as Won`**. This automatically brings up the **Order Form** to enter order numbers, confirmations, delivery dates, and payment status.
+  - **Lost or Declined:** Click **`Mark as Lost`** or **`Mark as Declined`**.
+  - **Resetting status:** If you want to change a *Lost* or *Declined* inquiry back to *Won*, you must first change it back to **`Active`** (an active pipeline state) before transition.
+
+---
+
+### 4. Trash Bin (Soft Delete)
+- Deleting an item does not permanently erase it. It goes to the **Trash Bin**.
+- You can access the Trash Bin at any time to **Restore** the record if it was deleted by mistake.
+
+---
+
+### 5. Syncing Data with Excel
+The CRM works hand-in-hand with your existing `STATUS 2025-2026.xlsx` spreadsheet:
+- **Auto-Import:** The first time you launch, the CRM imports all columns and rows from your existing Excel sheet.
+- **Sync back to Excel:** After editing, adding comments, or moving items in the CRM, click the **`Sync to Excel`** button at the top-right of the dashboard. This writes the live CRM database back to the spreadsheet, preserving all formatting and formulas.
+
+---
+
+## 🚀 Quick Start (Technical Version)
+
+### Option A — Double-click (Windows)
+Double-click **`run.bat`** in the workspace directory.
+
+### Option B — Command Line
+Run the launcher using python:
+```powershell
+python run.py
+```
+
+The launcher will:
+1. Auto-install missing packages in `requirements.txt`.
+2. Initialize `crm.db` (SQLite) if not present.
+3. Automatically load initial data from Excel.
+4. Start the FastAPI server on `127.0.0.1:8000` and open the browser.
+
+---
+
+## ✨ Application Features
+
+| Feature | Description |
+| :--- | :--- |
+| **Dashboard** | Live pipeline counts, active/won values, and deadline alerts. |
+| **Inquiries Pipeline** | List, filter, search, create, and update inquiries. |
+| **Status Transitions** | Moves inquiries between Active, Won, Lost, and Declined stages. |
+| **Won Orders Form** | Activates delivery terms, expected delivery date, cargo-X tracking, and payment terms. |
+| **Comment Timeline** | Full chronological log of history comments per inquiry. |
+| **Audit Trails** | Immutably records status changes and updates in the Activity Log. |
+| **Soft Delete** | Trash bin recovery system. |
+| **Instant Export** | Syncs live data back to the excel file in less than 1 second. |
 
 ---
 
 ## 🗂 Project Structure
 
 ```
-Team Eng/
+CRM-Workspace/
 │
-├── app/                        # Python backend
+├── app/                        # Python FastAPI Backend
 │   ├── __init__.py
-│   ├── database.py             # SQLAlchemy engine & session (SQLite)
-│   ├── models.py               # ORM tables: Inquiry, Order, Client, Principal, Comment, ActivityLog
-│   ├── schemas.py              # Pydantic validation schemas
-│   ├── main.py                 # FastAPI routes & API endpoints
-│   └── sync.py                 # Excel import/export logic (openpyxl + pandas)
+│   ├── database.py             # Database engine setup (SQLite)
+│   ├── models.py               # ORM Tables (Client, Principal, Inquiry, Order, Comment, Log)
+│   ├── schemas.py              # Pydantic schemas
+│   ├── main.py                 # API controllers/routes
+│   └── sync.py                 # Optimized Excel import/export code (pandas + openpyxl)
 │
-├── static/                     # Frontend (served by FastAPI)
-│   ├── index.html              # Single Page App UI
-│   ├── style.css               # Premium dark-mode design system
-│   └── app.js                  # UI logic, API calls, state management
+├── static/                     # SPA Frontend
+│   ├── index.html              # HTML structure
+│   ├── style.css               # Clean dark-mode styles
+│   └── app.js                  # Frontend client engine (AJAX API calls)
 │
-├── crm.db                      # SQLite database (auto-created on first run)
-├── run.py                      # Launcher: installs deps, imports data, starts server
-├── run.bat                     # Windows double-click launcher
-├── requirements.txt            # Python package dependencies
-├── STATUS 2025-2026.xlsx       # Your existing Excel file (read + written back to)
-└── plan.text                   # Original specification
-```
-
----
-
-## 🚀 Quick Start
-
-### Option A — Double-click (Windows)
-
-Simply double-click **`run.bat`** in the `Team Eng` folder.
-
-### Option B — Command Line
-
-```powershell
-cd "c:\Users\yassein ahmed\OneDrive\Desktop\Team Eng"
-python run.py
-```
-
-The launcher will:
-
-1. Check and auto-install any missing Python packages
-2. Auto-create the SQLite database `crm.db` if it doesn't exist
-3. Import all 7 Excel sheets into the database on first run
-4. Open your browser automatically at `http://127.0.0.1:8000`
-
-### Manual Installation (Optional)
-
-If you prefer installing dependencies yourself first:
-
-```powershell
-pip install -r requirements.txt
-python run.py
+├── crm.db                      # Local SQLite file database
+├── run.py                      # Python startup launcher
+├── run.bat                     # Windows shortcut launcher
+├── requirements.txt            # Python dependencies
+└── STATUS 2025-2026.xlsx       # The master Excel file
 ```
 
 ---
 
 ## 🔌 API Reference
 
-The backend exposes a REST API at `http://127.0.0.1:8000/`. You can explore it interactively at:
+Explore the interactive API docs at:
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
 
-```
-http://127.0.0.1:8000/docs      ← Swagger UI (auto-generated)
-http://127.0.0.1:8000/redoc     ← ReDoc UI
-```
+### Core Endpoints
 
-| Method   | Endpoint                         | Description                                                             |
-| -------- | -------------------------------- | ----------------------------------------------------------------------- |
-| `GET`    | `/api/dashboard`                 | Pipeline stats, alerts, and totals                                      |
-| `GET`    | `/api/inquiries`                 | List inquiries (filter by status, search term)                          |
-| `POST`   | `/api/inquiries`                 | Create new inquiry                                                      |
-| `PUT`    | `/api/inquiries/{id}`            | Update inquiry fields                                                   |
-| `DELETE` | `/api/inquiries/{id}`            | Soft delete inquiry                                                     |
-| `POST`   | `/api/inquiries/{id}/restore`    | Restore from trash                                                      |
-| `POST`   | `/api/inquiries/{id}/transition` | Transition status (pass `status` query param + order JSON body for Won) |
-| `GET`    | `/api/inquiries/{id}/comments`   | Get comments for inquiry                                                |
-| `POST`   | `/api/inquiries/{id}/comments`   | Add a comment                                                           |
-| `GET`    | `/api/activity-logs`             | Last 100 audit log entries                                              |
-| `GET`    | `/api/clients`                   | List all client names                                                   |
-| `GET`    | `/api/principals`                | List all principal names                                                |
-| `POST`   | `/api/sync/export`               | Write database → Excel file                                             |
-| `POST`   | `/api/sync/import`               | Re-import Excel → database (overwrites DB)                              |
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/dashboard` | Fetches dashboard statistics & alerts |
+| `GET` | `/api/inquiries` | Lists inquiries (filter by search and status) |
+| `POST` | `/api/inquiries` | Adds a new pipeline inquiry |
+| `PUT` | `/api/inquiries/{id}` | Updates existing inquiry fields |
+| `DELETE`| `/api/inquiries/{id}` | Moves an inquiry to the trash bin |
+| `POST` | `/api/inquiries/{id}/restore` | Restores a soft-deleted inquiry |
+| `POST` | `/api/inquiries/{id}/transition` | Transitions inquiry status (Required for marking Won) |
+| `POST` | `/api/sync/export` | Export database changes back to the Excel file |
+| `POST` | `/api/sync/import` | Force re-import data from the Excel file (clears database) |
 
 ---
 
-## 🗄 Database Schema
+## 📌 Business & Transition Rules
 
-```
-clients           principals
-  └─────────────────────────┐
-                            ↓
-                        inquiries  (status: Active / Won / Lost / Declined)
-                            │
-              ┌─────────────┼──────────────┐
-              ↓             ↓              ↓
-           orders        comments    activity_logs
-     (extended data    (timeline     (audit trail)
-      for won deals)    history)
-```
-
-- **`inquiries`** — master table for all pipeline records; `is_deleted` enables soft-delete
-- **`orders`** — one-to-one extension of a won inquiry with delivery/payment fields
-- **`comments`** — multi-line remarks and updates timeline per inquiry
-- **`activity_logs`** — immutable system log of every change (who changed what and when)
+1. **Status Flow Enforcement:**
+   - Active $\rightarrow$ Won / Lost / Declined (Allowed)
+   - Declined / Lost $\rightarrow$ Won (Forbidden directly; must transition to **Active** first)
+2. **Mandatory Fields:** Client, Principal, and Inquiry Reference must be provided.
+3. **Required Won details:** Transitioning to Won requires order confirmations, expected delivery dates, and total order value.
 
 ---
 
-## 📊 Excel Sync Details
+## ⚙️ System Requirements
 
-### Import (first launch or `/api/sync/import`)
-
-| Excel Sheet           | Maps To                       | Status   |
-| --------------------- | ----------------------------- | -------- |
-| `Inquires`            | `inquiries`                   | Active   |
-| `Declined Inquiries`  | `inquiries`                   | Declined |
-| `Lost Inquiries`      | `inquiries`                   | Lost     |
-| `Orders`              | `orders` + linked `inquiries` | Won      |
-| `LESER's Orders`      | `orders` + linked `inquiries` | Won      |
-| ` Bartec Orders`      | `orders` + linked `inquiries` | Won      |
-| ` Bartec Orders 2025` | `orders` + linked `inquiries` | Won      |
-
-### Export (Sync to Excel button)
-
-Writes the live DB state back to `STATUS 2025-2026.xlsx`, preserving the original header rows and formatting. Only the data rows (row 9+ for inquiry sheets, row 8+ for order sheets) are replaced.
-
----
-
-## 📌 Business Rules
-
-- **Status transitions** follow a controlled flow:
-  - Any active inquiry can go → Won / Lost / Declined
-  - Declined or Lost inquiries must be reset to **Active** before being marked **Won**
-- **Soft delete**: Records are never permanently removed unless you manually clear the database. Deleted records appear in the Trash Bin and can be restored.
-- **Required fields**: Client, Principal, and Inquiry Reference are mandatory when creating a new inquiry.
-- **Won transition**: Requires filling in the Order form (Order Number, Date, Value, Delivery).
-
----
-
-## ⚙️ Requirements
-
-- **Python 3.10+** (3.13 tested and working)
-- **Windows 10/11** (the `run.bat` launcher targets Windows; `run.py` works cross-platform)
-- No database server required — uses SQLite (file-based, zero-config)
-- Internet connection only needed on first run to download Python packages
+- **Python 3.10+** (Tested on Python 3.13)
+- **Windows 10/11**
+- Zero server database configuration required (fully database-portable SQLite).
 
 ---
 
 ## 🛑 Stopping the Server
 
-Press **`Ctrl + C`** in the terminal window running `run.py` (or close the terminal).  
-Your data is safely persisted in `crm.db` — the next launch will continue from where you left off.
+Press **`Ctrl + C`** in the command prompt launcher window or close the window.
 
 ---
 
 ## 🔄 Resetting the Database
 
-To wipe and re-import from Excel from scratch:
+If you want to clear the CRM and fully re-load all data from the spreadsheet:
+1. Close the CRM launcher window.
+2. Delete the `crm.db` file from the directory.
+3. Restart using `run.bat` or `python run.py`.
 
-```powershell
-Remove-Item crm.db
-python run.py
-```
-
-Or use the API endpoint:
+> [!WARNING]
+> Resetting the database will overwrite any new records, status updates, or comments added in the CRM that have **not** been exported back to the Excel spreadsheet. Always run the **Sync to Excel** function before executing a reset.
+se the API endpoint:
 
 ```
 POST http://127.0.0.1:8000/api/sync/import

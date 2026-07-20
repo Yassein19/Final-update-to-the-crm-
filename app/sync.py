@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import openpyxl
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from app.database import SessionLocal, engine, Base
 from app.models import Client, Principal, Inquiry, Order, Comment, ActivityLog
 
@@ -78,6 +78,36 @@ def import_from_excel():
         sheet_names = xls.sheet_names
         print("Sheets found:", sheet_names)
 
+        # In-memory caches for Client and Principal to avoid duplicate lookups
+        clients_cache = {}
+        principals_cache = {}
+
+        def get_or_create_client_cached(name: str):
+            name = name.strip()
+            if not name:
+                name = "Unknown Client"
+            if name not in clients_cache:
+                client = Client(name=name)
+                db.add(client)
+                db.flush()  # Generate client.id
+                clients_cache[name] = client
+            return clients_cache[name]
+
+        def get_or_create_principal_cached(name: str):
+            name = name.strip()
+            if not name:
+                name = "Unknown Principal"
+            if name not in principals_cache:
+                principal = Principal(name=name)
+                db.add(principal)
+                db.flush()  # Generate principal.id
+                principals_cache[name] = principal
+            return principals_cache[name]
+
+        # In-memory caches for looking up Inquiry by reference
+        inquiries_by_ref = {}  # (client_name, principal_name, inquiry_ref) -> Inquiry
+        inquiries_by_quot = {} # (client_name, principal_name, quot_ref) -> Inquiry
+
         # 1. Parse Inquiries Sheets
         inquiries_sheets = {
             "Inquires": "Active",
@@ -101,8 +131,8 @@ def import_from_excel():
                 if not principal_name and not client_name:
                     continue  # skip empty/header padding rows
 
-                client = get_or_create_client(db, client_name)
-                principal = get_or_create_principal(db, principal_name)
+                client = get_or_create_client_cached(client_name)
+                principal = get_or_create_principal_cached(principal_name)
 
                 inquiry = Inquiry(
                     inquiry_date=clean_date(row.get("Inquiry Date")),
@@ -123,13 +153,20 @@ def import_from_excel():
                     is_deleted=False
                 )
                 db.add(inquiry)
-                db.commit()
-                db.refresh(inquiry)
+                db.flush()  # Generate inquiry.id for comments/logs
+
+                # Cache the inquiry for later Won Orders matching
+                if status != "Won":
+                    c_key = client.name
+                    p_key = principal.name
+                    if inquiry.inquiry_reference:
+                        inquiries_by_ref[(c_key, p_key, inquiry.inquiry_reference)] = inquiry
+                    if inquiry.quotation_reference:
+                        inquiries_by_quot[(c_key, p_key, inquiry.quotation_reference)] = inquiry
 
                 # Parse and add comments
                 comments_text = clean_str(row.get("Comments / Updates", ""))
                 if comments_text:
-                    # Legacy sheets contain multi-line comments. We split them by newline.
                     comment_lines = [c.strip() for c in comments_text.split('\n') if c.strip()]
                     for line in comment_lines:
                         comment = Comment(
@@ -138,7 +175,6 @@ def import_from_excel():
                             created_at=datetime.utcnow()
                         )
                         db.add(comment)
-                    db.commit()
 
                 # Add initial activity log
                 log = ActivityLog(
@@ -147,7 +183,6 @@ def import_from_excel():
                     timestamp=datetime.utcnow()
                 )
                 db.add(log)
-                db.commit()
 
         # 2. Parse Won Order Sheets
         order_sheets = ["Orders", "LESER's Orders", " Bartec Orders", " Bartec Orders 2025"]
@@ -166,30 +201,21 @@ def import_from_excel():
                 if not client_name and not principal_name:
                     continue
 
-                client = get_or_create_client(db, client_name)
-                principal = get_or_create_principal(db, principal_name)
+                client = get_or_create_client_cached(client_name)
+                principal = get_or_create_principal_cached(principal_name)
 
                 inquiry_ref = clean_str(row.get("Client Refrence (Inquiry no.)"))
                 quot_ref = clean_str(row.get("Principal Reference (Quotation no.)"))
                 inquiry_date = clean_date(row.get("Inquiry Date"))
 
-                # Try to find a matching Inquiry in database
+                # Try to find a matching Inquiry in cache (much faster than DB querying)
                 inquiry = None
-                if inquiry_ref or quot_ref:
-                    if inquiry_ref:
-                        inquiry = db.query(Inquiry).filter(
-                            Inquiry.client_id == client.id,
-                            Inquiry.principal_id == principal.id,
-                            Inquiry.inquiry_reference == inquiry_ref,
-                            Inquiry.status != "Won"
-                        ).first()
-                    if not inquiry and quot_ref:
-                        inquiry = db.query(Inquiry).filter(
-                            Inquiry.client_id == client.id,
-                            Inquiry.principal_id == principal.id,
-                            Inquiry.quotation_reference == quot_ref,
-                            Inquiry.status != "Won"
-                        ).first()
+                c_name_clean = client.name
+                p_name_clean = principal.name
+                if inquiry_ref:
+                    inquiry = inquiries_by_ref.get((c_name_clean, p_name_clean, inquiry_ref))
+                if not inquiry and quot_ref:
+                    inquiry = inquiries_by_quot.get((c_name_clean, p_name_clean, quot_ref))
                 
                 if not inquiry:
                     # Create base inquiry since none matched
@@ -207,12 +233,10 @@ def import_from_excel():
                         is_deleted=False
                     )
                     db.add(inquiry)
-                    db.commit()
-                    db.refresh(inquiry)
+                    db.flush()
                 else:
                     # Update existing inquiry status to Won
                     inquiry.status = "Won"
-                    db.commit()
 
                 # Parse total order value column (varies in LESER's Orders)
                 tot_val_col = "Total Price" if "Total Price" in row else "Total Order Value"
@@ -241,7 +265,6 @@ def import_from_excel():
                     source_sheet=sheet
                 )
                 db.add(order)
-                db.commit()
 
                 comments_text = clean_str(row.get("Comments", ""))
                 if comments_text:
@@ -253,7 +276,6 @@ def import_from_excel():
                             created_at=datetime.utcnow()
                         )
                         db.add(comment)
-                    db.commit()
 
                 # Add log
                 log = ActivityLog(
@@ -262,9 +284,13 @@ def import_from_excel():
                     timestamp=datetime.utcnow()
                 )
                 db.add(log)
-                db.commit()
         
+        db.commit()
         print("Import completed successfully!")
+    except Exception as e:
+        db.rollback()
+        print("Error during import:", e)
+        raise e
     finally:
         db.close()
 
@@ -297,17 +323,18 @@ def export_to_excel():
                 ]
                 for mr in merged_ranges_to_remove:
                     ws.unmerge_cells(str(mr))
-                # Now safely clear cell values
-                for row in range(9, max_r + 1):
-                    for col in range(1, ws.max_column + 1):
-                        cell = ws.cell(row=row, column=col)
-                        try:
-                            cell.value = None
-                        except AttributeError:
-                            pass  # skip any remaining merged shadow cells
+                
+                # Now safely clear cell values using ws.iter_rows for better efficiency
+                for row in ws.iter_rows(min_row=9, max_row=max_r, min_col=1, max_col=ws.max_column):
+                    for cell in row:
+                        cell.value = None
 
-            # Fetch active/relevant records
-            records = db.query(Inquiry).filter(
+            # Fetch active/relevant records with eager loading to prevent N+1 queries
+            records = db.query(Inquiry).options(
+                joinedload(Inquiry.client),
+                joinedload(Inquiry.principal),
+                selectinload(Inquiry.comments)
+            ).filter(
                 Inquiry.status == status,
                 Inquiry.is_deleted == False
             ).all()
@@ -349,16 +376,17 @@ def export_to_excel():
                 ]
                 for mr in merged_ranges_to_remove:
                     ws.unmerge_cells(str(mr))
-                for row in range(8, max_r + 1):
-                    for col in range(1, ws.max_column + 1):
-                        cell = ws.cell(row=row, column=col)
-                        try:
-                            cell.value = None
-                        except AttributeError:
-                            pass
+                
+                for row in ws.iter_rows(min_row=8, max_row=max_r, min_col=1, max_col=ws.max_column):
+                    for cell in row:
+                        cell.value = None
 
-            # Fetch orders belonging to this sheet
-            orders = db.query(Order).join(Inquiry).filter(
+            # Fetch orders belonging to this sheet with eager loading
+            orders = db.query(Order).join(Inquiry).options(
+                joinedload(Order.inquiry).joinedload(Inquiry.client),
+                joinedload(Order.inquiry).joinedload(Inquiry.principal),
+                joinedload(Order.inquiry).selectinload(Inquiry.comments)
+            ).filter(
                 Inquiry.status == "Won",
                 Inquiry.is_deleted == False,
                 Order.source_sheet == sheet_name
@@ -407,7 +435,7 @@ def export_to_excel():
                     ws.cell(row=r_idx, column=21, value=o.payment_method)
                     ws.cell(row=r_idx, column=22, value=o.payment_status)
                     ws.cell(row=r_idx, column=23, value=comments_text)
-
+ 
         wb.save(EXCEL_PATH)
         print("Excel sync completed successfully!")
         return True
