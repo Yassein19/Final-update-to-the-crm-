@@ -30,8 +30,10 @@ class Inquiry(Base):
     inquiry_reference = Column(Text, nullable=True)
     quotation_reference = Column(Text, nullable=True)
     value = Column(Float, nullable=True)
+    currency = Column(String, nullable=False, default="USD") # USD, EUR
+    offer_type = Column(String, nullable=False, default="Firm") # Firm, Budgetary
     submission_method = Column(String, nullable=True)
-    status = Column(String, nullable=False, default="Active") # Active, Won, Lost, Declined
+    status = Column(String, nullable=False, default="Active") # Active, Order, Lost, Declined
     
     bid_bond_value = Column(String, nullable=True)
     performance_bond = Column(String, nullable=True)
@@ -56,6 +58,7 @@ class Order(Base):
     order_value = Column(Float, nullable=True)
     additionals = Column(Float, nullable=True)
     total_order_value = Column(Float, nullable=True)
+    currency = Column(String, nullable=False, default="USD") # USD, EUR
     order_confirmation_number = Column(String, nullable=True)
     team_commission = Column(String, nullable=True)
     order_confirmations = Column(Text, nullable=True)
@@ -67,6 +70,7 @@ class Order(Base):
     performance_bond_guarantee = Column(String, nullable=True)
     payment_method = Column(String, nullable=True)
     payment_status = Column(String, nullable=True)
+    order_status = Column(String, nullable=False, default="Under Production") # Under Production, Shipped, Paid, Due payment, Cancelled
     source_sheet = Column(String, nullable=False, default="Orders") # Orders, LESER's Orders, etc.
 
     # Relationships

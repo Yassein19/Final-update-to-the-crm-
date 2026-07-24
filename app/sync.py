@@ -1,4 +1,5 @@
 import os
+import time
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -7,7 +8,21 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.database import SessionLocal, engine, Base
 from app.models import Client, Principal, Inquiry, Order, Comment, ActivityLog
 
-EXCEL_PATH = r"c:\Users\yassein ahmed\OneDrive\Desktop\Team Eng\STATUS 2025-2026.xlsx"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOCAL_EXCEL_PRIMARY = os.path.join(BASE_DIR, "STATUS 2025-2026 (1).xlsx")
+LOCAL_EXCEL_ALT = os.path.join(BASE_DIR, "STATUS 2025-2026.xlsx")
+DESKTOP_EXCEL = r"c:\Users\yassein ahmed\OneDrive\Desktop\Team Eng\STATUS 2025-2026 (1).xlsx"
+
+if os.path.exists(LOCAL_EXCEL_PRIMARY):
+    EXCEL_PATH = LOCAL_EXCEL_PRIMARY
+elif os.path.exists(LOCAL_EXCEL_ALT):
+    EXCEL_PATH = LOCAL_EXCEL_ALT
+else:
+    EXCEL_PATH = DESKTOP_EXCEL
+
+EURO_PRINCIPALS = [
+    'leser', 'bartec', 'sanco', 'as schneider', 'adams', 'dekomte', 'te.ma', 'fht', 'dungs'
+]
 
 def clean_str(val):
     if pd.isna(val) or val is None:
@@ -22,9 +37,32 @@ def clean_float(val):
     if pd.isna(val) or val is None:
         return 0.0
     try:
-        return float(val)
+        # Strip out currency symbols if present in number column
+        val_str = str(val).replace("$", "").replace("€", "").replace("USD", "").replace("EUR", "").replace(",", "").strip()
+        return float(val_str)
     except ValueError:
         return 0.0
+
+def detect_currency(principal_name, val_raw, ref_text="", comment_text="", default_curr="USD"):
+    val_str = str(val_raw or '')
+    combined_text = f"{val_str} {ref_text} {comment_text}".upper()
+    
+    # 1. Explicit Dollar markers in text
+    if 'USD' in combined_text or '$' in combined_text or 'DOLLAR' in combined_text:
+        return "USD"
+        
+    # 2. Explicit Euro markers in text or value cell string
+    if '€' in combined_text or 'EUR' in combined_text or 'EURO' in combined_text:
+        return "EUR"
+        
+    # 3. Deduce from Principal name
+    p_lower = str(principal_name or '').strip().lower()
+    if p_lower:
+        for euro_p in EURO_PRINCIPALS:
+            if euro_p in p_lower:
+                return "EUR"
+            
+    return default_curr
 
 def clean_date(val):
     if pd.isna(val) or val is None or str(val).strip() == "":
@@ -67,6 +105,8 @@ def get_or_create_principal(db: Session, name: str):
     return principal
 
 def import_from_excel():
+    start_time = time.time()
+    print("=== [START] Starting Excel Import Sync ===")
     db = SessionLocal()
     try:
         # Reset database tables
@@ -134,15 +174,37 @@ def import_from_excel():
                 client = get_or_create_client_cached(client_name)
                 principal = get_or_create_principal_cached(principal_name)
 
+                inq_ref = clean_str(row.get("Inquiry Reference"))
+                quot_ref = clean_str(row.get("Quotation Reference"))
+                comments_text = clean_str(row.get("Comments / Updates", ""))
+
+                raw_val = row.get(" Values") if " Values" in row else row.get("Values")
+                val_num = clean_float(raw_val)
+                curr = detect_currency(principal_name, raw_val, f"{inq_ref} {quot_ref}", comments_text)
+
+                # Determine offer type (Firm vs Budgetary)
+                offer_type = "Budgetary" if ("budget" in inq_ref.lower() or "budget" in quot_ref.lower()) else "Firm"
+
+                inq_date_str = clean_date(row.get("Inquiry Date"))
+                if inq_date_str:
+                    try:
+                        inq_year = int(inq_date_str.split('-')[0])
+                        if inq_year < 2025:
+                            continue  # Skip inquiries prior to 2025
+                    except (ValueError, IndexError):
+                        pass
+
                 inquiry = Inquiry(
-                    inquiry_date=clean_date(row.get("Inquiry Date")),
+                    inquiry_date=inq_date_str,
                     last_update=clean_date(row.get("Last Update")),
                     due_date=clean_date(row.get(" Due date") if " Due date" in row else row.get("Due date")),
                     principal_id=principal.id,
                     client_id=client.id,
-                    inquiry_reference=clean_str(row.get("Inquiry Reference")),
-                    quotation_reference=clean_str(row.get("Quotation Reference")),
-                    value=clean_float(row.get(" Values") if " Values" in row else row.get("Values")),
+                    inquiry_reference=inq_ref,
+                    quotation_reference=quot_ref,
+                    value=val_num,
+                    currency=curr,
+                    offer_type=offer_type,
                     submission_method=clean_str(row.get("Submission Method")),
                     status=status,
                     bid_bond_value=clean_str(row.get("Bid Bond Value")),
@@ -164,14 +226,13 @@ def import_from_excel():
                     if inquiry.quotation_reference:
                         inquiries_by_quot[(c_key, p_key, inquiry.quotation_reference)] = inquiry
 
-                # Parse and add comments
-                comments_text = clean_str(row.get("Comments / Updates", ""))
+                # Parse and add comments (joined into a single clean paragraph)
                 if comments_text:
-                    comment_lines = [c.strip() for c in comments_text.split('\n') if c.strip()]
-                    for line in comment_lines:
+                    single_para = " ".join([c.strip() for c in comments_text.split('\n') if c.strip()])
+                    if single_para:
                         comment = Comment(
                             inquiry_id=inquiry.id,
-                            content=line,
+                            content=single_para,
                             created_at=datetime.utcnow()
                         )
                         db.add(comment)
@@ -207,8 +268,14 @@ def import_from_excel():
                 inquiry_ref = clean_str(row.get("Client Refrence (Inquiry no.)"))
                 quot_ref = clean_str(row.get("Principal Reference (Quotation no.)"))
                 inquiry_date = clean_date(row.get("Inquiry Date"))
+                comments_text = clean_str(row.get("Comments", ""))
 
-                # Try to find a matching Inquiry in cache (much faster than DB querying)
+                tot_val_col = "Total Price" if "Total Price" in row else ("Total Order Value" if "Total Order Value" in row else "Order Value")
+                raw_ord_val = row.get(tot_val_col) if tot_val_col in row else row.get("Order Value")
+                total_val_num = clean_float(raw_ord_val)
+                curr = detect_currency(principal_name, raw_ord_val, f"{inquiry_ref} {quot_ref}", comments_text)
+
+                # Try to find a matching Inquiry in cache
                 inquiry = None
                 c_name_clean = client.name
                 p_name_clean = principal.name
@@ -227,22 +294,28 @@ def import_from_excel():
                         client_id=client.id,
                         inquiry_reference=inquiry_ref,
                         quotation_reference=quot_ref,
-                        value=clean_float(row.get("Order Value")),
+                        value=total_val_num,
+                        currency=curr,
+                        offer_type="Firm",
                         submission_method="Excel Import",
-                        status="Won",
+                        status="Order",
                         is_deleted=False
                     )
                     db.add(inquiry)
                     db.flush()
                 else:
-                    # Update existing inquiry status to Won
-                    inquiry.status = "Won"
+                    # Update existing inquiry status to Order
+                    inquiry.status = "Order"
 
-                # Parse total order value column (varies in LESER's Orders)
-                tot_val_col = "Total Price" if "Total Price" in row else "Total Order Value"
-                
-                # Check for TEAM Commisiion
+                # Check for TEAM Commission
                 team_comm = clean_str(row.get("TEAM Commisiion", ""))
+                pay_status = clean_str(row.get("Payment Status", ""))
+
+                # Deduce Order Status from Payment Status
+                if "Supplied" in pay_status or "Paid" in pay_status:
+                    ord_status = "Paid" if "Paid" in pay_status else "Shipped"
+                else:
+                    ord_status = "Under Production"
 
                 order = Order(
                     id=inquiry.id,
@@ -250,7 +323,8 @@ def import_from_excel():
                     order_date=clean_date(row.get("Order Date")),
                     order_value=clean_float(row.get("Order Value")),
                     additionals=clean_float(row.get("Additionals")),
-                    total_order_value=clean_float(row.get(tot_val_col)),
+                    total_order_value=total_val_num,
+                    currency=curr,
                     order_confirmation_number=clean_str(row.get("Order Confirmation Number")),
                     team_commission=team_comm,
                     order_confirmations=clean_str(row.get("Order Confirmations.")),
@@ -261,18 +335,19 @@ def import_from_excel():
                     expected_delivery_date=clean_date(row.get("Expected Delivery Date")),
                     performance_bond_guarantee=clean_str(row.get("Performance Bond Guarantee")),
                     payment_method=clean_str(row.get("Payment method")),
-                    payment_status=clean_str(row.get("Payment Status")),
+                    payment_status=pay_status,
+                    order_status=ord_status,
                     source_sheet=sheet
                 )
                 db.add(order)
 
                 comments_text = clean_str(row.get("Comments", ""))
                 if comments_text:
-                    comment_lines = [c.strip() for c in comments_text.split('\n') if c.strip()]
-                    for line in comment_lines:
+                    single_para = " ".join([c.strip() for c in comments_text.split('\n') if c.strip()])
+                    if single_para:
                         comment = Comment(
                             inquiry_id=inquiry.id,
-                            content=line,
+                            content=single_para,
                             created_at=datetime.utcnow()
                         )
                         db.add(comment)
@@ -286,18 +361,22 @@ def import_from_excel():
                 db.add(log)
         
         db.commit()
-        print("Import completed successfully!")
+        elapsed = time.time() - start_time
+        print(f"=== [SUCCESS] Excel Import Sync completed successfully in {elapsed:.2f} seconds ===")
+        return {"status": "success", "elapsed_seconds": round(elapsed, 2)}
     except Exception as e:
         db.rollback()
-        print("Error during import:", e)
+        elapsed = time.time() - start_time
+        print(f"=== [FAILED] Excel Import Sync failed after {elapsed:.2f} seconds. Error: {e} ===")
         raise e
     finally:
         db.close()
 
 def export_to_excel():
+    start_time = time.time()
+    print("=== [START] Starting Excel Export Sync ===")
     db = SessionLocal()
     try:
-        # Load existing workbook to preserve non-data elements if possible
         wb = openpyxl.load_workbook(EXCEL_PATH)
         
         # 1. Export Inquiries Sheets
@@ -312,24 +391,12 @@ def export_to_excel():
                 wb.create_sheet(sheet_name)
             ws = wb[sheet_name]
             
-            # Clear old data starting from row 9
-            # Keep rows 1-8 (headers and formatting)
+            # Unmerge data zone merged cells to avoid MergedCell read-only errors
             max_r = ws.max_row
-            if max_r >= 9:
-                # Unmerge any merged cells in the data zone first
-                merged_ranges_to_remove = [
-                    mr for mr in list(ws.merged_cells.ranges)
-                    if mr.min_row >= 9
-                ]
-                for mr in merged_ranges_to_remove:
-                    ws.unmerge_cells(str(mr))
-                
-                # Now safely clear cell values using ws.iter_rows for better efficiency
-                for row in ws.iter_rows(min_row=9, max_row=max_r, min_col=1, max_col=ws.max_column):
-                    for cell in row:
-                        cell.value = None
+            for mr in list(ws.merged_cells.ranges):
+                if mr.min_row >= 9:
+                    ws.unmerge_cells(range_string=str(mr))
 
-            # Fetch active/relevant records with eager loading to prevent N+1 queries
             records = db.query(Inquiry).options(
                 joinedload(Inquiry.client),
                 joinedload(Inquiry.principal),
@@ -340,7 +407,6 @@ def export_to_excel():
             ).all()
 
             for r_idx, req in enumerate(records, 9):
-                # Format comments timeline into a single newline-separated block
                 comments_text = "\n".join([c.content for c in req.comments])
                 
                 ws.cell(row=r_idx, column=1, value=req.inquiry_date)
@@ -360,6 +426,14 @@ def export_to_excel():
                 ws.cell(row=r_idx, column=15, value=req.contact_person)
                 ws.cell(row=r_idx, column=16, value=comments_text)
 
+            # Clear trailing unused old rows if new count is smaller than old max_r
+            new_end_row = 9 + len(records)
+            if max_r >= new_end_row:
+                for row in ws.iter_rows(min_row=new_end_row, max_row=max_r, min_col=1, max_col=16):
+                    for cell in row:
+                        if type(cell).__name__ != 'MergedCell':
+                            cell.value = None
+
         # 2. Export Order Sheets
         order_sheets = ["Orders", "LESER's Orders", " Bartec Orders", " Bartec Orders 2025"]
         for sheet_name in order_sheets:
@@ -367,27 +441,17 @@ def export_to_excel():
                 wb.create_sheet(sheet_name)
             ws = wb[sheet_name]
             
-            # Clear old data starting from row 8
             max_r = ws.max_row
-            if max_r >= 8:
-                merged_ranges_to_remove = [
-                    mr for mr in list(ws.merged_cells.ranges)
-                    if mr.min_row >= 8
-                ]
-                for mr in merged_ranges_to_remove:
-                    ws.unmerge_cells(str(mr))
-                
-                for row in ws.iter_rows(min_row=8, max_row=max_r, min_col=1, max_col=ws.max_column):
-                    for cell in row:
-                        cell.value = None
+            for mr in list(ws.merged_cells.ranges):
+                if mr.min_row >= 8:
+                    ws.unmerge_cells(range_string=str(mr))
 
-            # Fetch orders belonging to this sheet with eager loading
             orders = db.query(Order).join(Inquiry).options(
                 joinedload(Order.inquiry).joinedload(Inquiry.client),
                 joinedload(Order.inquiry).joinedload(Inquiry.principal),
                 joinedload(Order.inquiry).selectinload(Inquiry.comments)
             ).filter(
-                Inquiry.status == "Won",
+                Inquiry.status.in_(["Won", "Order"]),
                 Inquiry.is_deleted == False,
                 Order.source_sheet == sheet_name
             ).all()
@@ -395,7 +459,6 @@ def export_to_excel():
             for r_idx, o in enumerate(orders, 8):
                 comments_text = "\n".join([c.content for c in o.inquiry.comments])
                 
-                # Check columns list to handle LESER's Orders differences
                 ws.cell(row=r_idx, column=1, value=o.inquiry.client.name if o.inquiry.client else "")
                 ws.cell(row=r_idx, column=2, value=o.inquiry.principal.name if o.inquiry.principal else "")
                 ws.cell(row=r_idx, column=3, value=o.inquiry.inquiry_date)
@@ -407,7 +470,7 @@ def export_to_excel():
                 ws.cell(row=r_idx, column=9, value=o.additionals)
                 
                 if sheet_name == "LESER's Orders":
-                    ws.cell(row=r_idx, column=10, value=o.total_order_value) # Total Price
+                    ws.cell(row=r_idx, column=10, value=o.total_order_value)
                     ws.cell(row=r_idx, column=11, value=o.order_confirmation_number)
                     ws.cell(row=r_idx, column=12, value=o.order_confirmations)
                     ws.cell(row=r_idx, column=13, value=o.delivery_term)
@@ -415,13 +478,13 @@ def export_to_excel():
                     ws.cell(row=r_idx, column=15, value=o.delay_penalty)
                     ws.cell(row=r_idx, column=16, value=o.delivery_period)
                     ws.cell(row=r_idx, column=17, value=o.expected_delivery_date)
-                    ws.cell(row=r_idx, column=18, value="") # Days until delivery date (formula/empty)
+                    ws.cell(row=r_idx, column=18, value="")
                     ws.cell(row=r_idx, column=19, value=o.performance_bond_guarantee)
                     ws.cell(row=r_idx, column=20, value=o.payment_method)
                     ws.cell(row=r_idx, column=21, value=o.payment_status)
                     ws.cell(row=r_idx, column=22, value=comments_text)
                 else:
-                    ws.cell(row=r_idx, column=10, value=o.total_order_value) # Total Order Value
+                    ws.cell(row=r_idx, column=10, value=o.total_order_value)
                     ws.cell(row=r_idx, column=11, value=o.order_confirmation_number)
                     ws.cell(row=r_idx, column=12, value=o.team_commission)
                     ws.cell(row=r_idx, column=13, value=o.order_confirmations)
@@ -430,17 +493,27 @@ def export_to_excel():
                     ws.cell(row=r_idx, column=16, value=o.delay_penalty)
                     ws.cell(row=r_idx, column=17, value=o.delivery_period)
                     ws.cell(row=r_idx, column=18, value=o.expected_delivery_date)
-                    ws.cell(row=r_idx, column=19, value="") # Days until delivery
+                    ws.cell(row=r_idx, column=19, value="")
                     ws.cell(row=r_idx, column=20, value=o.performance_bond_guarantee)
                     ws.cell(row=r_idx, column=21, value=o.payment_method)
                     ws.cell(row=r_idx, column=22, value=o.payment_status)
                     ws.cell(row=r_idx, column=23, value=comments_text)
- 
+
+            new_end_row = 8 + len(orders)
+            max_col_cnt = 22 if sheet_name == "LESER's Orders" else 23
+            if max_r >= new_end_row:
+                for row in ws.iter_rows(min_row=new_end_row, max_row=max_r, min_col=1, max_col=max_col_cnt):
+                    for cell in row:
+                        if type(cell).__name__ != 'MergedCell':
+                            cell.value = None
+
         wb.save(EXCEL_PATH)
-        print("Excel sync completed successfully!")
-        return True
+        elapsed = time.time() - start_time
+        print(f"=== [SUCCESS] Excel Export Sync completed successfully in {elapsed:.2f} seconds ===")
+        return {"status": "success", "elapsed_seconds": round(elapsed, 2)}
     except Exception as e:
-        print("Error exporting to Excel:", e)
+        elapsed = time.time() - start_time
+        print(f"=== [FAILED] Excel Export Sync failed after {elapsed:.2f} seconds. Error: {e} ===")
         raise e
     finally:
         db.close()

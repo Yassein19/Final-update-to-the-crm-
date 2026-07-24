@@ -51,6 +51,7 @@ class OrderBase(BaseModel):
     order_value: Optional[float] = 0.0
     additionals: Optional[float] = 0.0
     total_order_value: Optional[float] = 0.0
+    currency: Optional[str] = "USD"
     order_confirmation_number: Optional[str] = ""
     team_commission: Optional[str] = ""
     order_confirmations: Optional[str] = ""
@@ -62,6 +63,7 @@ class OrderBase(BaseModel):
     performance_bond_guarantee: Optional[str] = ""
     payment_method: Optional[str] = ""
     payment_status: Optional[str] = ""
+    order_status: Optional[str] = "Under Production"
     source_sheet: Optional[str] = "Orders"
 
 class OrderCreate(OrderBase):
@@ -79,6 +81,8 @@ class InquiryBase(BaseModel):
     inquiry_reference: Optional[str] = ""
     quotation_reference: Optional[str] = ""
     value: Optional[float] = 0.0
+    currency: Optional[str] = "USD"
+    offer_type: Optional[str] = "Firm"
     submission_method: Optional[str] = ""
     status: Optional[str] = "Active"
     bid_bond_value: Optional[str] = ""
@@ -111,7 +115,100 @@ class DashboardStats(BaseModel):
     won_inquiries: int
     lost_inquiries: int
     declined_inquiries: int
-    total_value_active: float
-    total_value_won: float
+    total_value_active_usd: float
+    total_value_active_eur: float
+    total_value_won_usd: float
+    total_value_won_eur: float
+    total_value_lost_usd: float
+    total_value_lost_eur: float
     due_this_week_alerts: List[InquiryOut]
     near_delivery_alerts: List[InquiryOut]
+
+class ValueBreakdown(BaseModel):
+    usd: float = 0.0
+    eur: float = 0.0
+
+class CategoryStats(BaseModel):
+    count: int = 0
+    values: ValueBreakdown = ValueBreakdown()
+
+class AnnualReportData(BaseModel):
+    year: str
+    # 1) Dashboard: overall view
+    tenders_total: CategoryStats
+    tenders_cancelled: CategoryStats
+    tenders_declined: CategoryStats
+    tenders_firm: CategoryStats
+    tenders_budgetary: CategoryStats
+    
+    submitted_lost: CategoryStats
+    submitted_ongoing: CategoryStats
+    submitted_awarded: CategoryStats
+    
+    orders_under_production: CategoryStats
+    orders_shipped: CategoryStats
+    orders_paid: CategoryStats
+    orders_due_payment: CategoryStats
+    
+    # 2) Distribution for Pie Chart
+    chart_distribution: dict
+
+# --- BUSINESS INTELLIGENCE & ANALYTICS SCHEMAS ---
+
+class CompanyKPIs(BaseModel):
+    win_rate: float = 0.0
+    avg_inquiry_val_usd: float = 0.0
+    avg_inquiry_val_eur: float = 0.0
+    avg_order_val_usd: float = 0.0
+    avg_order_val_eur: float = 0.0
+    avg_sales_cycle_days: float = 0.0
+    pipeline_value_usd: float = 0.0
+    pipeline_value_eur: float = 0.0
+    total_inquiries: int = 0
+    active_inquiries: int = 0
+    won_orders: int = 0
+    lost_inquiries: int = 0
+    declined_inquiries: int = 0
+
+class CompanyReportData(BaseModel):
+    company_id: int
+    company_name: str
+    company_type: str = "Client"  # "Client" or "Principal"
+    kpis: CompanyKPIs
+    inquiry_trend: dict = {}
+    principal_performance: List[dict] = []
+    largest_orders: List[dict] = []
+    most_active_principal: str = "N/A"
+    inquiries: List[InquiryOut] = []
+    ai_executive_summary: str = ""
+
+class MetricComparison(BaseModel):
+    current: float = 0.0
+    previous: float = 0.0
+    change_pct: float = 0.0
+    direction: str = "flat"  # "up", "down", "flat"
+
+class ComparisonAnalyticsData(BaseModel):
+    period: str  # "Daily", "Weekly", "Monthly", "Yearly"
+    current_label: str
+    previous_label: str
+    metrics: dict  # Metric -> MetricComparison
+    natural_explanation: str
+
+class SalesAnalyticsData(BaseModel):
+    daily: dict = {}
+    weekly: dict = {}
+    monthly: dict = {}
+    yearly: dict = {}
+    insights: List[str] = []
+
+class TimeSeriesData(BaseModel):
+    period_type: str  # "Daily", "Weekly", "Monthly", "Quarterly", "Yearly"
+    labels: List[str] = []
+    inquiries_count: List[int] = []
+    won_orders_count: List[int] = []
+    pipeline_usd: List[float] = []
+    pipeline_eur: List[float] = []
+    win_rate: List[float] = []
+    avg_sales_cycle_days: List[float] = []
+

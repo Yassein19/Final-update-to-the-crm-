@@ -5,20 +5,24 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
 import os
+import time
 
 from app.database import get_db, engine, Base
 from app.models import Client, Principal, Inquiry, Order, Comment, ActivityLog
 from app.schemas import (
     InquiryOut, InquiryCreate, InquiryUpdate,
     OrderOut, OrderCreate, CommentOut, CommentCreate,
-    ActivityLogOut, ClientOut, PrincipalOut, DashboardStats
+    ActivityLogOut, ClientOut, PrincipalOut, DashboardStats,
+    AnnualReportData, CategoryStats, ValueBreakdown
 )
 from app.sync import import_from_excel, export_to_excel
+from app.routers import analytics
 
 # Create SQLite tables on startup
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Team Engineering CRM API")
+app.include_router(analytics.router)
 
 # API Routes
 
@@ -27,17 +31,24 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     # Count totals
     total_inquiries = db.query(Inquiry).filter(Inquiry.is_deleted == False).count()
     active_inquiries = db.query(Inquiry).filter(Inquiry.status == "Active", Inquiry.is_deleted == False).count()
-    won_inquiries = db.query(Inquiry).filter(Inquiry.status == "Won", Inquiry.is_deleted == False).count()
+    won_inquiries = db.query(Inquiry).filter(Inquiry.status.in_(["Won", "Order"]), Inquiry.is_deleted == False).count()
     lost_inquiries = db.query(Inquiry).filter(Inquiry.status == "Lost", Inquiry.is_deleted == False).count()
     declined_inquiries = db.query(Inquiry).filter(Inquiry.status == "Declined", Inquiry.is_deleted == False).count()
 
-    # Active Value (sum of values)
+    # Active Value (USD vs EUR)
     active_objs = db.query(Inquiry).filter(Inquiry.status == "Active", Inquiry.is_deleted == False).all()
-    total_value_active = sum([obj.value for obj in active_objs if obj.value is not None])
+    total_value_active_usd = sum([obj.value for obj in active_objs if obj.value is not None and (obj.currency or 'USD').upper() == 'USD'])
+    total_value_active_eur = sum([obj.value for obj in active_objs if obj.value is not None and (obj.currency or 'USD').upper() == 'EUR'])
 
-    # Won Value (sum of total order values)
-    won_objs = db.query(Order).join(Inquiry).filter(Inquiry.status == "Won", Inquiry.is_deleted == False).all()
-    total_value_won = sum([obj.total_order_value for obj in won_objs if obj.total_order_value is not None])
+    # Won Value (USD vs EUR)
+    won_objs = db.query(Order).join(Inquiry).filter(Inquiry.status.in_(["Won", "Order"]), Inquiry.is_deleted == False).all()
+    total_value_won_usd = sum([obj.total_order_value for obj in won_objs if obj.total_order_value is not None and (obj.currency or 'USD').upper() == 'USD'])
+    total_value_won_eur = sum([obj.total_order_value for obj in won_objs if obj.total_order_value is not None and (obj.currency or 'USD').upper() == 'EUR'])
+
+    # Lost Value (USD vs EUR)
+    lost_objs = db.query(Inquiry).filter(Inquiry.status == "Lost", Inquiry.is_deleted == False).all()
+    total_value_lost_usd = sum([obj.value for obj in lost_objs if obj.value is not None and (obj.currency or 'USD').upper() == 'USD'])
+    total_value_lost_eur = sum([obj.value for obj in lost_objs if obj.value is not None and (obj.currency or 'USD').upper() == 'EUR'])
 
     # Alerts: Inquiries due this week or overdue
     due_this_week = []
@@ -49,22 +60,19 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         if inq.due_date:
             try:
                 due_dt = datetime.strptime(inq.due_date, "%Y-%m-%d").date()
-                # Overdue OR due within the next 7 days
                 if due_dt <= one_week_later:
                     due_this_week.append(inq)
             except ValueError:
-                # If date format is weird, skip or include if contains keyword
                 pass
 
-    # Alerts: Orders near delivery date (expected delivery within next 30 days)
+    # Alerts: Orders near delivery date
     near_delivery = []
     thirty_days_later = today + timedelta(days=30)
-    all_won_orders = db.query(Order).join(Inquiry).filter(Inquiry.status == "Won", Inquiry.is_deleted == False).all()
+    all_won_orders = db.query(Order).join(Inquiry).filter(Inquiry.status.in_(["Won", "Order"]), Inquiry.is_deleted == False).all()
     for order in all_won_orders:
         if order.expected_delivery_date:
             try:
                 del_dt = datetime.strptime(order.expected_delivery_date, "%Y-%m-%d").date()
-                # Near delivery if expected date is between today - 30 days (overdue but recent) and today + 30 days
                 if del_dt <= thirty_days_later and order.payment_status != "Order Supplied\nPaid" and order.payment_status != "Paid":
                     near_delivery.append(order.inquiry)
             except ValueError:
@@ -76,10 +84,83 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         won_inquiries=won_inquiries,
         lost_inquiries=lost_inquiries,
         declined_inquiries=declined_inquiries,
-        total_value_active=total_value_active,
-        total_value_won=total_value_won,
-        due_this_week_alerts=due_this_week[:10],  # cap at 10 alerts
+        total_value_active_usd=total_value_active_usd,
+        total_value_active_eur=total_value_active_eur,
+        total_value_won_usd=total_value_won_usd,
+        total_value_won_eur=total_value_won_eur,
+        total_value_lost_usd=total_value_lost_usd,
+        total_value_lost_eur=total_value_lost_eur,
+        due_this_week_alerts=due_this_week[:10],
         near_delivery_alerts=near_delivery[:10]
+    )
+
+@app.get("/api/annual-report", response_model=AnnualReportData)
+def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db)):
+    # Helper to calculate count and dual-currency breakdown
+    def calc_stats(inquiries_list):
+        usd_val = sum([i.value for i in inquiries_list if i.value and (i.currency or 'USD').upper() == 'USD'])
+        eur_val = sum([i.value for i in inquiries_list if i.value and (i.currency or 'USD').upper() == 'EUR'])
+        return CategoryStats(count=len(inquiries_list), values=ValueBreakdown(usd=usd_val, eur=eur_val))
+
+    def calc_order_stats(orders_list):
+        usd_val = sum([o.total_order_value for o in orders_list if o.total_order_value and (o.currency or 'USD').upper() == 'USD'])
+        eur_val = sum([o.total_order_value for o in orders_list if o.total_order_value and (o.currency or 'USD').upper() == 'EUR'])
+        return CategoryStats(count=len(orders_list), values=ValueBreakdown(usd=usd_val, eur=eur_val))
+
+    # Base inquiry query
+    inq_query = db.query(Inquiry)
+    if year and year.lower() != "all":
+        inq_query = inq_query.filter(Inquiry.inquiry_date.like(f"{year}%"))
+
+    all_inqs = inq_query.all()
+    non_deleted_inqs = [i for i in all_inqs if not i.is_deleted]
+
+    # 1. Tenders / Inquiries
+    tenders_total = calc_stats(non_deleted_inqs)
+    tenders_cancelled = calc_stats([i for i in all_inqs if i.is_deleted])
+    tenders_declined = calc_stats([i for i in non_deleted_inqs if i.status == "Declined"])
+    tenders_firm = calc_stats([i for i in non_deleted_inqs if (i.offer_type or 'Firm').lower() == "firm"])
+    tenders_budgetary = calc_stats([i for i in non_deleted_inqs if (i.offer_type or 'Firm').lower() == "budgetary"])
+
+    # 2. Submitted offers
+    submitted_lost = calc_stats([i for i in non_deleted_inqs if i.status == "Lost"])
+    submitted_ongoing = calc_stats([i for i in non_deleted_inqs if i.status == "Active"])
+    submitted_awarded = calc_stats([i for i in non_deleted_inqs if i.status in ("Won", "Order")])
+
+    # 3. Orders breakdown
+    order_query = db.query(Order).join(Inquiry).filter(Inquiry.is_deleted == False)
+    if year and year.lower() != "all":
+        order_query = order_query.filter((Order.order_date.like(f"{year}%")) | (Inquiry.inquiry_date.like(f"{year}%")))
+    
+    all_orders = order_query.all()
+    orders_under_prod = calc_order_stats([o for o in all_orders if "production" in (o.order_status or "").lower()])
+    orders_shipped = calc_order_stats([o for o in all_orders if "shipped" in (o.order_status or "").lower()])
+    orders_paid = calc_order_stats([o for o in all_orders if "paid" in (o.order_status or "").lower() or "paid" in (o.payment_status or "").lower()])
+    orders_due = calc_order_stats([o for o in all_orders if "due" in (o.order_status or "").lower() or "cad" in (o.payment_status or "").lower()])
+
+    chart_dist = {
+        "Active / Ongoing": len([i for i in non_deleted_inqs if i.status == "Active"]),
+        "Order / Awarded": len([i for i in non_deleted_inqs if i.status in ("Won", "Order")]),
+        "Lost Offers": len([i for i in non_deleted_inqs if i.status == "Lost"]),
+        "Declined": len([i for i in non_deleted_inqs if i.status == "Declined"]),
+        "Budgetary Offers": len([i for i in non_deleted_inqs if (i.offer_type or "").lower() == "budgetary"])
+    }
+
+    return AnnualReportData(
+        year=year or "All Years",
+        tenders_total=tenders_total,
+        tenders_cancelled=tenders_cancelled,
+        tenders_declined=tenders_declined,
+        tenders_firm=tenders_firm,
+        tenders_budgetary=tenders_budgetary,
+        submitted_lost=submitted_lost,
+        submitted_ongoing=submitted_ongoing,
+        submitted_awarded=submitted_awarded,
+        orders_under_production=orders_under_prod,
+        orders_shipped=orders_shipped,
+        orders_paid=orders_paid,
+        orders_due_payment=orders_due,
+        chart_distribution=chart_dist
     )
 
 @app.get("/api/inquiries", response_model=List[InquiryOut])
@@ -96,11 +177,14 @@ def get_inquiries(
         query = query.filter(Inquiry.is_deleted == True)
         
     if status:
-        query = query.filter(Inquiry.status == status)
+        if status.lower() != "all":
+            query = query.filter(Inquiry.status == status)
+    else:
+        # Default: exclude Won inquiries from standard inquiries view (they move to Orders)
+        query = query.filter(Inquiry.status != "Won")
 
     inquiries = query.all()
 
-    # Search filter in Python to handle relationship attributes and references easily
     if search:
         s = search.lower()
         filtered = []
@@ -156,6 +240,8 @@ def create_inquiry(payload: InquiryCreate, db: Session = Depends(get_db)):
         inquiry_reference=payload.inquiry_reference,
         quotation_reference=payload.quotation_reference,
         value=payload.value,
+        currency=payload.currency or "USD",
+        offer_type=payload.offer_type or "Firm",
         submission_method=payload.submission_method,
         status="Active",
         bid_bond_value=payload.bid_bond_value,
@@ -260,7 +346,7 @@ def restore_inquiry(id: int, db: Session = Depends(get_db)):
 @app.post("/api/inquiries/{id}/transition", response_model=InquiryOut)
 def transition_status(
     id: int,
-    status: str = Query(..., description="Active, Won, Lost, Declined"),
+    status: str = Query(..., description="Active, Order, Lost, Declined"),
     order_data: Optional[OrderCreate] = None,
     db: Session = Depends(get_db)
 ):
@@ -272,22 +358,22 @@ def transition_status(
     if old_status == status:
         return inquiry
 
-    # Business Rules validation: Can't transition from Declined/Lost -> Won directly
-    if old_status in ("Declined", "Lost") and status == "Won":
+    # Business Rules validation: Can't transition from Declined/Lost -> Order directly
+    if old_status in ("Declined", "Lost") and status in ("Won", "Order"):
          raise HTTPException(
              status_code=400,
-             detail="Cannot transition directly to Won from Lost/Declined. Transition back to Active first."
+             detail="Cannot transition directly to Order from Lost/Declined. Transition back to Active first."
          )
 
     inquiry.status = status
     inquiry.last_update = datetime.now().strftime("%Y-%m-%d")
 
-    # If transitioned to Won, handle Order record creation/update
-    if status == "Won":
+    # If transitioned to Order, handle Order record creation/update
+    if status in ("Won", "Order"):
         if not order_data:
             raise HTTPException(
                 status_code=400,
-                detail="Order details are required when marking status as Won"
+                detail="Order details are required when marking status as Order"
             )
         
         # Determine source sheet based on principal name for won orders
@@ -380,19 +466,33 @@ def get_principals(db: Session = Depends(get_db)):
 
 @app.post("/api/sync/export")
 def sync_export():
+    start_t = time.time()
     try:
-        export_to_excel()
-        return {"status": "success", "message": "Database successfully synced back to Excel file."}
+        res = export_to_excel()
+        elapsed = res.get("elapsed_seconds") if isinstance(res, dict) else round(time.time() - start_t, 2)
+        msg = f"Excel Export SUCCEEDED in {elapsed:.2f} seconds."
+        print(f"=== [SYNC API] {msg} ===")
+        return {"status": "success", "message": msg, "elapsed_seconds": elapsed}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to export: {str(e)}")
+        elapsed = round(time.time() - start_t, 2)
+        msg = f"Excel Export FAILED after {elapsed:.2f} seconds. Error: {str(e)}"
+        print(f"=== [SYNC API] {msg} ===")
+        raise HTTPException(status_code=500, detail=msg)
 
 @app.post("/api/sync/import")
 def sync_import():
+    start_t = time.time()
     try:
-        import_from_excel()
-        return {"status": "success", "message": "Database re-imported from Excel successfully."}
+        res = import_from_excel()
+        elapsed = res.get("elapsed_seconds") if isinstance(res, dict) else round(time.time() - start_t, 2)
+        msg = f"Excel Import SUCCEEDED in {elapsed:.2f} seconds."
+        print(f"=== [SYNC API] {msg} ===")
+        return {"status": "success", "message": msg, "elapsed_seconds": elapsed}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to import: {str(e)}")
+        elapsed = round(time.time() - start_t, 2)
+        msg = f"Excel Import FAILED after {elapsed:.2f} seconds. Error: {str(e)}"
+        print(f"=== [SYNC API] {msg} ===")
+        raise HTTPException(status_code=500, detail=msg)
 
 # Serve Static UI files
 static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")

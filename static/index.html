@@ -33,7 +33,15 @@
                 </a>
                 <a href="#" class="menu-item" id="nav-orders" onclick="switchTab('orders')">
                     <i data-lucide="shopping-cart"></i>
-                    <span>Won Orders</span>
+                    <span>Orders</span>
+                </a>
+                <a href="#" class="menu-item" id="nav-report" onclick="switchTab('report')">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Annual Report</span>
+                </a>
+                <a href="#" class="menu-item" id="nav-analytics" onclick="switchTab('analytics')">
+                    <i data-lucide="trending-up"></i>
+                    <span>Analytics & BI</span>
                 </a>
                 <a href="#" class="menu-item" id="nav-logs" onclick="switchTab('logs')">
                     <i data-lucide="history"></i>
@@ -58,16 +66,16 @@
             <header class="top-bar">
                 <div class="header-search">
                     <i data-lucide="search" class="search-icon"></i>
-                    <input type="text" id="global-search" placeholder="Search across won orders, client reference, contact person..." oninput="onGlobalSearch(this.value)">
+                    <input type="text" id="global-search" placeholder="Search across orders, client reference, contact person..." oninput="onGlobalSearch(this.value)">
                 </div>
                 <div class="header-profile">
                     <div class="stat-badge">
                         <span class="badge-label">Active Value:</span>
-                        <span class="badge-val text-blue" id="header-active-val">$0</span>
+                        <span class="badge-val text-blue" id="header-active-val">$0 | €0</span>
                     </div>
                     <div class="stat-badge">
-                        <span class="badge-label">Won Value:</span>
-                        <span class="badge-val text-green" id="header-won-val">$0</span>
+                        <span class="badge-label">Order Value:</span>
+                        <span class="badge-val text-green" id="header-won-val">$0 | €0</span>
                     </div>
                     <div class="profile-avatar">
                         <span>👤</span>
@@ -89,15 +97,15 @@
                         <div class="metric-info">
                             <span class="metric-label">Active Inquiries</span>
                             <h2 class="metric-value" id="stats-active">0</h2>
-                            <span class="metric-sub" id="stats-active-val">$0 Value</span>
+                            <span class="metric-sub" id="stats-active-val">$0 | €0</span>
                         </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-icon bg-green-trans"><i data-lucide="trophy"></i></div>
                         <div class="metric-info">
-                            <span class="metric-label">Won Orders</span>
+                            <span class="metric-label">Orders</span>
                             <h2 class="metric-value" id="stats-won">0</h2>
-                            <span class="metric-sub" id="stats-won-val">$0 Value</span>
+                            <span class="metric-sub" id="stats-won-val">$0 | €0</span>
                         </div>
                     </div>
                     <div class="metric-card">
@@ -105,7 +113,7 @@
                         <div class="metric-info">
                             <span class="metric-label">Lost Inquiries</span>
                             <h2 class="metric-value" id="stats-lost">0</h2>
-                            <span class="metric-sub">Closed deals</span>
+                            <span class="metric-sub" id="stats-lost-val">$0 | €0</span>
                         </div>
                     </div>
                     <div class="metric-card">
@@ -164,10 +172,11 @@
                     <div class="filter-group">
                         <label>Pipeline Stage:</label>
                         <select id="inquiry-filter-status" onchange="loadInquiries()">
-                            <option value="">All Stages</option>
+                            <option value="">Active & Pending</option>
                             <option value="Active">Active Inquiries</option>
                             <option value="Lost">Lost Inquiries</option>
                             <option value="Declined">Declined Inquiries</option>
+                            <option value="All">All Inquiries (incl. Orders)</option>
                         </select>
                     </div>
                     <div class="filter-group">
@@ -190,13 +199,16 @@
                         <thead>
                             <tr>
                                 <th>Inquiry Date</th>
-                                <th>Client / Principal</th>
+                                <th>Due Date</th>
+                                <th>Client</th>
+                                <th>Principal</th>
                                 <th>Inquiry Reference</th>
                                 <th>Quotation Ref</th>
                                 <th>Value</th>
+                                <th>Type</th>
+                                <th>Last Update</th>
                                 <th>Stage</th>
-                                <th>Due Date</th>
-                                <th>Actions</th>
+                                <th class="no-print">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="inquiries-list">
@@ -206,11 +218,11 @@
                 </div>
             </div>
 
-            <!-- Won Orders Content -->
+            <!-- Orders Content -->
             <div id="tab-orders" class="content-section">
                 <div class="section-header">
-                    <h1>Won Orders</h1>
-                    <p class="subtitle">Extended technical and delivery specifications for won contracts.</p>
+                    <h1>Orders</h1>
+                    <p class="subtitle">Extended technical and delivery specifications for commercial orders.</p>
                 </div>
 
                 <div class="filter-ribbon">
@@ -231,20 +243,414 @@
                     <table class="data-table" id="orders-table">
                         <thead>
                             <tr>
+                                <th>Client</th>
+                                <th>Principal</th>
+                                <th>Order No.</th>
                                 <th>Order Date</th>
-                                <th>Order Number</th>
-                                <th>Client / Principal</th>
                                 <th>Expected Delivery</th>
-                                <th>Order Value</th>
-                                <th>Team Comm.</th>
+                                <th>Total Order Value</th>
+                                <th>Order Status</th>
                                 <th>Payment Status</th>
-                                <th>Actions</th>
+                                <th>Perf. Bond</th>
+                                <th class="no-print">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="orders-list">
                             <!-- Populated dynamically -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Annual Report Content -->
+            <div id="tab-report" class="content-section">
+                <div class="section-header flex-between">
+                    <div>
+                        <h1>Annual Report Summary</h1>
+                        <p class="subtitle">Comprehensive overall view of inquiries, tenders, submitted offers, and order outcomes.</p>
+                    </div>
+                    <div class="btn-group no-print">
+                        <select id="report-year-select" class="form-select" onchange="loadAnnualReport()">
+                            <option value="All">All Years</option>
+                            <option value="2026" selected>2026</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="window.print()">
+                            <i data-lucide="printer"></i> Print Report
+                        </button>
+                        <div class="export-dropdown" style="position: relative; display: inline-block;">
+                            <button class="btn btn-primary" onclick="toggleExportMenu(event, 'export-menu-reports')">
+                                <i data-lucide="download"></i> Save / Export <i data-lucide="chevron-down"></i>
+                            </button>
+                            <div id="export-menu-reports" class="export-menu-card" style="display:none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; z-index: 100; min-width: 190px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; box-shadow: var(--shadow-lg);">
+                                <button class="export-menu-btn" onclick="exportReportToWord('tab-reports')">
+                                    <i data-lucide="file-text"></i> Save as Word (.docx)
+                                </button>
+                                <button class="export-menu-btn" onclick="exportReportToExcel('tab-reports')">
+                                    <i data-lucide="sheet"></i> Save as Excel (.xlsx)
+                                </button>
+                                <button class="export-menu-btn" onclick="exportReportToPDF()">
+                                    <i data-lucide="file-check"></i> Save as PDF (.pdf)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Printable Report View -->
+                <div class="printable-report">
+                    <h2 class="report-section-title">1) Dashboard: Overall View (No. & Values)</h2>
+                    
+                    <!-- Section 1: Inquiries / Tenders -->
+                    <div class="report-block card">
+                        <h3>Inquiries & Tenders</h3>
+                        <div class="report-table-wrapper">
+                            <table class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>Metric Category</th>
+                                        <th>Count (No.)</th>
+                                        <th>USD Value ($)</th>
+                                        <th>EUR Value (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Total Tenders Received</td>
+                                        <td id="rpt-tenders-count">0</td>
+                                        <td id="rpt-tenders-usd">$0.00</td>
+                                        <td id="rpt-tenders-eur">€0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Cancelled Tenders</td>
+                                        <td id="rpt-canc-count">0</td>
+                                        <td id="rpt-canc-usd">$0.00</td>
+                                        <td id="rpt-canc-eur">€0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Declined Tenders</td>
+                                        <td id="rpt-decl-count">0</td>
+                                        <td id="rpt-decl-usd">$0.00</td>
+                                        <td id="rpt-decl-eur">€0.00</td>
+                                    </tr>
+                                    <tr class="table-row-highlight">
+                                        <td>Firm Offers</td>
+                                        <td id="rpt-firm-count">0</td>
+                                        <td id="rpt-firm-usd">$0.00</td>
+                                        <td id="rpt-firm-eur">€0.00</td>
+                                    </tr>
+                                    <tr class="table-row-highlight">
+                                        <td>Budgetary Offers</td>
+                                        <td id="rpt-budg-count">0</td>
+                                        <td id="rpt-budg-usd">$0.00</td>
+                                        <td id="rpt-budg-eur">€0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Submitted Offers -->
+                    <div class="report-block card mt-4">
+                        <h3>Submitted Commercial Offers</h3>
+                        <div class="report-table-wrapper">
+                            <table class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>Outcome Stage</th>
+                                        <th>Count (No.)</th>
+                                        <th>USD Value ($)</th>
+                                        <th>EUR Value (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Ongoing / Active Offers</td>
+                                        <td id="rpt-ong-count">0</td>
+                                        <td id="rpt-ong-usd">$0.00</td>
+                                        <td id="rpt-ong-eur">€0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Awarded (Orders)</td>
+                                        <td id="rpt-award-count">0</td>
+                                        <td id="rpt-award-usd">$0.00</td>
+                                        <td id="rpt-award-eur">€0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Lost Offers</td>
+                                        <td id="rpt-lost-count">0</td>
+                                        <td id="rpt-lost-usd">$0.00</td>
+                                        <td id="rpt-lost-eur">€0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Orders Execution Status -->
+                    <div class="report-block card mt-4">
+                        <h3>Orders Execution Status</h3>
+                        <div class="report-table-wrapper">
+                            <table class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>Order Status</th>
+                                        <th>Count (No.)</th>
+                                        <th>USD Value ($)</th>
+                                        <th>EUR Value (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Under Production</td>
+                                        <td id="rpt-ord-prod-count">0</td>
+                                        <td id="rpt-ord-prod-usd">$0.00</td>
+                                        <td id="rpt-ord-prod-eur">€0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Shipped Orders</td>
+                                        <td id="rpt-ord-ship-count">0</td>
+                                        <td id="rpt-ord-ship-usd">$0.00</td>
+                                        <td id="rpt-ord-ship-eur">€0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Fully Paid</td>
+                                        <td id="rpt-ord-paid-count">0</td>
+                                        <td id="rpt-ord-paid-usd">$0.00</td>
+                                        <td id="rpt-ord-paid-eur">€0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Due Payment / CAD Pending</td>
+                                        <td id="rpt-ord-due-count">0</td>
+                                        <td id="rpt-ord-due-usd">$0.00</td>
+                                        <td id="rpt-ord-due-eur">€0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <h2 class="report-section-title mt-6">2) Detailed Overview & Pipeline Distribution</h2>
+                    <div class="report-chart-box card">
+                        <div class="chart-container" style="height: 340px;">
+                            <canvas id="annualReportChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics & Business Intelligence Content -->
+            <div id="tab-analytics" class="content-section">
+                <div class="section-header flex-between">
+                    <div>
+                        <h1>Business Intelligence & Sales Analytics</h1>
+                        <p class="subtitle">Executive summaries, performance insights, customer intelligence, and trend analytics.</p>
+                    </div>
+                    <div class="btn-group no-print">
+                        <button class="btn btn-secondary" onclick="window.print()"><i data-lucide="printer"></i> Print Report</button>
+                        <div class="export-dropdown" style="position: relative; display: inline-block;">
+                            <button class="btn btn-primary" onclick="toggleExportMenu(event, 'export-menu-bi')">
+                                <i data-lucide="download"></i> Save / Export <i data-lucide="chevron-down"></i>
+                            </button>
+                            <div id="export-menu-bi" class="export-menu-card" style="display:none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; z-index: 100; min-width: 190px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; box-shadow: var(--shadow-lg);">
+                                <button class="export-menu-btn" onclick="exportReportToWord('tab-analytics')">
+                                    <i data-lucide="file-text"></i> Save as Word (.docx)
+                                </button>
+                                <button class="export-menu-btn" onclick="exportReportToExcel('tab-analytics')">
+                                    <i data-lucide="sheet"></i> Save as Excel (.xlsx)
+                                </button>
+                                <button class="export-menu-btn" onclick="exportReportToPDF()">
+                                    <i data-lucide="file-check"></i> Save as PDF (.pdf)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub Navigation Ribbon -->
+                <div class="filter-ribbon" style="margin-bottom: 1.5rem;">
+                    <button class="btn btn-secondary bi-subtab active" id="bi-tab-sales" onclick="switchBITab('sales')"><i data-lucide="layout-grid"></i> Sales Analytics</button>
+                    <button class="btn btn-secondary bi-subtab" id="bi-tab-company" onclick="switchBITab('company')"><i data-lucide="building-2"></i> Company Intelligence</button>
+                    <button class="btn btn-secondary bi-subtab" id="bi-tab-series" onclick="switchBITab('series')"><i data-lucide="line-chart"></i> Time Series Trends</button>
+                    <button class="btn btn-secondary bi-subtab" id="bi-tab-comparison" onclick="switchBITab('comparison')"><i data-lucide="git-compare"></i> Period Comparisons</button>
+                </div>
+
+                <!-- BI View 1: Sales Analytics Dashboard -->
+                <div id="bi-view-sales" class="bi-view">
+                    <div class="grid-4 gap-4">
+                        <div class="card stat-card">
+                            <span class="stat-label">Daily New Inquiries</span>
+                            <div class="stat-value" id="bi-daily-inqs">0</div>
+                            <span class="stat-subtext" id="bi-daily-sub">Due Today: 0</span>
+                        </div>
+                        <div class="card stat-card">
+                            <span class="stat-label">Weekly Won Orders</span>
+                            <div class="stat-value" id="bi-weekly-orders">0</div>
+                            <span class="stat-subtext">This Week</span>
+                        </div>
+                        <div class="card stat-card">
+                            <span class="stat-label">Monthly Win Rate</span>
+                            <div class="stat-value" id="bi-monthly-winrate">0.0%</div>
+                            <span class="stat-subtext" id="bi-monthly-inqs">0 Inquiries</span>
+                        </div>
+                        <div class="card stat-card">
+                            <span class="stat-label">Yearly Won Orders</span>
+                            <div class="stat-value" id="bi-yearly-orders">0</div>
+                            <span class="stat-subtext">This Year</span>
+                        </div>
+                    </div>
+
+                    <div class="card mt-4">
+                        <h3><i data-lucide="sparkles" style="color: var(--accent-light);"></i> Executive Daily & Weekly Business Insights</h3>
+                        <div id="bi-sales-insights" class="mt-2" style="line-height: 1.6; color: var(--text-muted);">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BI View 2: Company Intelligence Report -->
+                <div id="bi-view-company" class="bi-view" style="display:none;">
+                    <div class="card mb-4">
+                        <div class="filter-ribbon" style="margin-bottom:0; justify-content: flex-start; gap: 1.5rem;">
+                            <div class="filter-group">
+                                <label>Company Search Category:</label>
+                                <select id="bi-company-type" onchange="onCompanyTypeChange()">
+                                    <option value="client">Clients / Customers</option>
+                                    <option value="principal">Principals / Manufacturers</option>
+                                </select>
+                            </div>
+                            <div class="filter-group" style="min-width: 320px;">
+                                <label id="bi-company-select-label">Select Client / Customer:</label>
+                                <select id="bi-company-select" onchange="loadCompanyReport()"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4" style="background: rgba(59, 130, 246, 0.08); border-left: 4px solid var(--accent-light);">
+                        <h4 style="color: var(--accent-light);"><i data-lucide="bot"></i> AI Executive Intelligence Summary</h4>
+                        <p id="bi-company-ai-summary" class="mt-2" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main);">-</p>
+                    </div>
+
+                    <div class="grid-4 gap-4 mb-4">
+                        <div class="card stat-card">
+                            <span class="stat-label" id="bi-card-winrate-label">Win Rate</span>
+                            <div class="stat-value" id="bi-comp-winrate">0%</div>
+                        </div>
+                        <div class="card stat-card">
+                            <span class="stat-label">Won Orders</span>
+                            <div class="stat-value" id="bi-comp-won">0</div>
+                        </div>
+                        <div class="card stat-card">
+                            <span class="stat-label">Active Pipeline</span>
+                            <div class="stat-value" id="bi-comp-pipe">$0 | €0</div>
+                        </div>
+                        <div class="card stat-card">
+                            <span class="stat-label">Avg Sales Cycle</span>
+                            <div class="stat-value" id="bi-comp-cycle">0 Days</div>
+                        </div>
+                    </div>
+
+                    <!-- Company Inquiries List Table -->
+                    <div class="card mb-4">
+                        <div class="flex-between mb-3">
+                            <h3 id="bi-company-inquiries-title">All Related Inquiries</h3>
+                            <span class="badge" id="bi-company-inquiries-count">0 Records</span>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Inquiry Date</th>
+                                        <th>Due Date</th>
+                                        <th>Client</th>
+                                        <th>Principal</th>
+                                        <th>Reference</th>
+                                        <th>Value</th>
+                                        <th>Last Update</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bi-company-inquiries-table-body">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Largest Won Orders</h3>
+                        <div class="table-container mt-2">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Order No.</th>
+                                        <th>Order Date</th>
+                                        <th>Counterparty</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bi-company-orders-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BI View 3: Time Series Analysis -->
+                <div id="bi-view-series" class="bi-view" style="display:none;">
+                    <div class="card mb-4">
+                        <div class="flex-between">
+                            <h3>Historical Time Series Trends</h3>
+                            <div class="filter-group">
+                                <label>Timeframe:</label>
+                                <select id="bi-series-period" onchange="loadTimeSeriesAnalysis()">
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Quarterly">Quarterly</option>
+                                    <option value="Yearly">Yearly</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="chart-container mt-4" style="height: 380px;">
+                            <canvas id="biTimeSeriesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BI View 4: Period Comparisons -->
+                <div id="bi-view-comparison" class="bi-view" style="display:none;">
+                    <div class="card mb-4">
+                        <div class="flex-between">
+                            <h3>Period-Over-Period Comparison</h3>
+                            <div class="filter-group">
+                                <label>Comparison Scope:</label>
+                                <select id="bi-comparison-period" onchange="loadComparisonAnalytics()">
+                                    <option value="Monthly">This Month vs Last Month</option>
+                                    <option value="Weekly">This Week vs Last Week</option>
+                                    <option value="Daily">Today vs Yesterday</option>
+                                    <option value="Yearly">This Year vs Last Year</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p id="bi-comparison-explanation" class="mt-2" style="color: var(--text-muted); font-size: 0.95rem;">-</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th id="bi-cmp-hdr-curr">Current Period</th>
+                                        <th id="bi-cmp-hdr-prev">Previous Period</th>
+                                        <th>Change (%)</th>
+                                        <th>Trend Direction</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bi-comparison-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -290,7 +696,7 @@
         </main>
     </div>
 
-    <!-- MODAL: Create New Inquiry -->
+    <!-- MODAL: Create / Edit Inquiry -->
     <div id="modal-inquiry" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
@@ -328,8 +734,22 @@
                             <input type="text" id="inq-quotation" placeholder="e.g. Q21021759/25">
                         </div>
                         <div class="form-group">
-                            <label>Value (USD/EUR)</label>
+                            <label>Currency</label>
+                            <select id="inq-currency">
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Value</label>
                             <input type="number" step="0.01" id="inq-value" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Offer Type</label>
+                            <select id="inq-offer-type">
+                                <option value="Firm">Firm Offer</option>
+                                <option value="Budgetary">Budgetary Offer</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Submission Method</label>
@@ -370,12 +790,16 @@
         </div>
     </div>
 
-    <!-- MODAL: View Details & Comments Timeline -->
     <div id="modal-details" class="modal-overlay">
-        <div class="modal-card modal-lg">
+        <div class="modal-card modal-lg" id="modal-details-card">
             <div class="modal-header">
                 <h3>Inquiry Detail & Remarks Timeline</h3>
-                <button class="modal-close" onclick="closeModal('modal-details')">&times;</button>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleFullscreenModal('modal-details-card')" id="btn-toggle-fullscreen">
+                        <i data-lucide="maximize-2"></i> Fullscreen
+                    </button>
+                    <button class="modal-close" onclick="closeModal('modal-details')">&times;</button>
+                </div>
             </div>
             <div class="modal-body">
                 <div class="details-layout">
@@ -388,6 +812,8 @@
                             <div><strong>Inquiry Date:</strong> <span id="detail-date">-</span></div>
                             <div><strong>Due Date:</strong> <span id="detail-due">-</span></div>
                             <div><strong>Value:</strong> <span id="detail-value">-</span></div>
+                            <div><strong>Offer Type:</strong> <span id="detail-offer-type">-</span></div>
+                            <div><strong>Last Update:</strong> <span id="detail-last-update">-</span></div>
                             <div><strong>Submission:</strong> <span id="detail-submission">-</span></div>
                             <div><strong>Bid Bond:</strong> <span id="detail-bid-bond">-</span></div>
                             <div><strong>Perf. Bond:</strong> <span id="detail-perf-bond">-</span></div>
@@ -422,11 +848,11 @@
         </div>
     </div>
 
-    <!-- MODAL: Won Order Form (Triggered on transition to Won) -->
+    <!-- MODAL: Order Form (Transition or Edit) -->
     <div id="modal-order-transition" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
-                <h3>Order Information (Transition to Won)</h3>
+                <h3>Order Information</h3>
                 <button class="modal-close" onclick="closeModal('modal-order-transition')">&times;</button>
             </div>
             <div class="modal-body">
@@ -442,6 +868,13 @@
                             <input type="date" id="ord-date" required>
                         </div>
                         <div class="form-group">
+                            <label>Currency</label>
+                            <select id="ord-currency">
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label class="required">Order Value (Base)</label>
                             <input type="number" step="0.01" id="ord-val" placeholder="0.00" required>
                         </div>
@@ -452,6 +885,29 @@
                         <div class="form-group">
                             <label class="required">Total Order Value</label>
                             <input type="number" step="0.01" id="ord-total" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Order Status</label>
+                            <select id="ord-status">
+                                <option value="Under Production">Under Production</option>
+                                <option value="Shipped">Shipped</option>
+                                <option value="Paid">Paid</option>
+                                <option value="Due Payment">Due Payment</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Status</label>
+                            <select id="ord-payment-status">
+                                <option value="Order ready">Order ready</option>
+                                <option value="Paid">Paid</option>
+                                <option value="90% CAD paid">90% CAD paid</option>
+                                <option value="Order Supplied&#10;Paid">Order Supplied / Paid</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Performance Bond</label>
+                            <input type="text" id="ord-perf-bond" placeholder="e.g. 10% / Letter of Guarantee #123">
                         </div>
                         <div class="form-group">
                             <label>Order Confirmation Number</label>
@@ -478,19 +934,10 @@
                                 <option value="Net 30 days">Net 30 Days Wire</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Payment Status</label>
-                            <select id="ord-payment-status">
-                                <option value="Order ready">Order ready</option>
-                                <option value="Paid">Paid</option>
-                                <option value="90% CAD paid">90% CAD paid</option>
-                                <option value="Order Supplied&#10;Paid">Order Supplied / Paid</option>
-                            </select>
-                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="closeModal('modal-order-transition')">Cancel</button>
-                        <button type="submit" class="btn btn-success">Mark Won & Save Order</button>
+                        <button type="submit" class="btn btn-success">Save Order Specs</button>
                     </div>
                 </form>
             </div>
