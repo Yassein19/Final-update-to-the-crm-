@@ -9,14 +9,14 @@ from app.database import SessionLocal, engine, Base
 from app.models import Client, Principal, Inquiry, Order, Comment, ActivityLog
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOCAL_EXCEL_PRIMARY = os.path.join(BASE_DIR, "STATUS 2025-2026 (1).xlsx")
-LOCAL_EXCEL_ALT = os.path.join(BASE_DIR, "STATUS 2025-2026.xlsx")
-DESKTOP_EXCEL = r"c:\Users\yassein ahmed\OneDrive\Desktop\Team Eng\STATUS 2025-2026 (1).xlsx"
+DRIVE_EXCEL = r"G:\My Drive\Salma Elwakeel\Status\STATUS 2025-2026.xlsx"
+LOCAL_EXCEL = os.path.join(BASE_DIR, "STATUS 2025-2026.xlsx")
+DESKTOP_EXCEL = r"c:\Users\yassein ahmed\OneDrive\Desktop\Team Eng\STATUS 2025-2026.xlsx"
 
-if os.path.exists(LOCAL_EXCEL_PRIMARY):
-    EXCEL_PATH = LOCAL_EXCEL_PRIMARY
-elif os.path.exists(LOCAL_EXCEL_ALT):
-    EXCEL_PATH = LOCAL_EXCEL_ALT
+if os.path.exists(DRIVE_EXCEL):
+    EXCEL_PATH = DRIVE_EXCEL
+elif os.path.exists(LOCAL_EXCEL):
+    EXCEL_PATH = LOCAL_EXCEL
 else:
     EXCEL_PATH = DESKTOP_EXCEL
 
@@ -246,6 +246,7 @@ def import_from_excel():
                 db.add(log)
 
         # 2. Parse Won Order Sheets
+        processed_order_inquiry_ids = set()
         order_sheets = ["Orders", "LESER's Orders", " Bartec Orders", " Bartec Orders 2025"]
         for sheet in order_sheets:
             if sheet not in sheet_names:
@@ -283,6 +284,9 @@ def import_from_excel():
                     inquiry = inquiries_by_ref.get((c_name_clean, p_name_clean, inquiry_ref))
                 if not inquiry and quot_ref:
                     inquiry = inquiries_by_quot.get((c_name_clean, p_name_clean, quot_ref))
+
+                if inquiry and inquiry.id in processed_order_inquiry_ids:
+                    inquiry = None
                 
                 if not inquiry:
                     # Create base inquiry since none matched
@@ -307,13 +311,15 @@ def import_from_excel():
                     # Update existing inquiry status to Order
                     inquiry.status = "Order"
 
+                processed_order_inquiry_ids.add(inquiry.id)
+
                 # Check for TEAM Commission
                 team_comm = clean_str(row.get("TEAM Commisiion", ""))
                 pay_status = clean_str(row.get("Payment Status", ""))
 
                 # Deduce Order Status from Payment Status
                 if "Supplied" in pay_status or "Paid" in pay_status:
-                    ord_status = "Paid" if "Paid" in pay_status else "Shipped"
+                    ord_status = "Under Payment" if "Paid" in pay_status else "Shipped"
                 else:
                     ord_status = "Under Production"
 

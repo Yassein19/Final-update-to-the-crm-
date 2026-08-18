@@ -13,7 +13,7 @@ from app.schemas import (
     InquiryOut, InquiryCreate, InquiryUpdate,
     OrderOut, OrderCreate, CommentOut, CommentCreate,
     ActivityLogOut, ClientOut, PrincipalOut, DashboardStats,
-    AnnualReportData, CategoryStats, ValueBreakdown
+    AnnualReportData, CategoryStats, ValueBreakdown, CategoryDetailItem, CategoryDetailView
 )
 from app.sync import import_from_excel, export_to_excel
 from app.routers import analytics
@@ -73,7 +73,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         if order.expected_delivery_date:
             try:
                 del_dt = datetime.strptime(order.expected_delivery_date, "%Y-%m-%d").date()
-                if del_dt <= thirty_days_later and order.payment_status != "Order Supplied\nPaid" and order.payment_status != "Paid":
+                if del_dt <= thirty_days_later and (order.payment_status or "").lower() != "paid":
                     near_delivery.append(order.inquiry)
             except ValueError:
                 pass
@@ -110,7 +110,7 @@ def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db))
     # Base inquiry query
     inq_query = db.query(Inquiry)
     if year and year.lower() != "all":
-        inq_query = inq_query.filter(Inquiry.inquiry_date.like(f"{year}%"))
+        inq_query = inq_query.filter(Inquiry.inquiry_date.like(f"%{year}%"))
 
     all_inqs = inq_query.all()
     non_deleted_inqs = [i for i in all_inqs if not i.is_deleted]
@@ -130,13 +130,13 @@ def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db))
     # 3. Orders breakdown
     order_query = db.query(Order).join(Inquiry).filter(Inquiry.is_deleted == False)
     if year and year.lower() != "all":
-        order_query = order_query.filter((Order.order_date.like(f"{year}%")) | (Inquiry.inquiry_date.like(f"{year}%")))
+        order_query = order_query.filter((Order.order_date.like(f"%{year}%")) | (Inquiry.inquiry_date.like(f"%{year}%")))
     
     all_orders = order_query.all()
     orders_under_prod = calc_order_stats([o for o in all_orders if "production" in (o.order_status or "").lower()])
     orders_shipped = calc_order_stats([o for o in all_orders if "shipped" in (o.order_status or "").lower()])
-    orders_paid = calc_order_stats([o for o in all_orders if "paid" in (o.order_status or "").lower() or "paid" in (o.payment_status or "").lower()])
-    orders_due = calc_order_stats([o for o in all_orders if "due" in (o.order_status or "").lower() or "cad" in (o.payment_status or "").lower()])
+    orders_paid = calc_order_stats([o for o in all_orders if (o.payment_status or "").lower() == "paid" or (o.order_status or "").lower() == "under payment"])
+    orders_due = calc_order_stats([o for o in all_orders if (o.payment_status or "").lower() != "paid"])
 
     chart_dist = {
         "Active / Ongoing": len([i for i in non_deleted_inqs if i.status == "Active"]),
@@ -144,6 +144,73 @@ def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db))
         "Lost Offers": len([i for i in non_deleted_inqs if i.status == "Lost"]),
         "Declined": len([i for i in non_deleted_inqs if i.status == "Declined"]),
         "Budgetary Offers": len([i for i in non_deleted_inqs if (i.offer_type or "").lower() == "budgetary"])
+    }
+
+    def build_category_view(cat_name, items):
+        tot_count = len(items)
+        usd_val = sum([i.value for i in items if i.value and str(i.currency or 'USD').upper() == 'USD'])
+        eur_val = sum([i.value for i in items if i.value and str(i.currency or 'USD').upper() == 'EUR'])
+
+        p_map = {}
+        for i in items:
+            p_name = i.principal.name if (i.principal and i.principal.name) else "Unknown Principal"
+            if p_name not in p_map:
+                p_map[p_name] = {"count": 0, "usd": 0.0, "eur": 0.0}
+            p_map[p_name]["count"] += 1
+            val = i.value or 0.0
+            curr = str(i.currency or 'USD').upper()
+            if curr == 'USD':
+                p_map[p_name]["usd"] += val
+            elif curr == 'EUR':
+                p_map[p_name]["eur"] += val
+
+        p_items = []
+        for p_name, stats in p_map.items():
+            pct = round((stats["count"] / tot_count * 100.0), 1) if tot_count > 0 else 0.0
+            p_items.append(CategoryDetailItem(
+                name=p_name,
+                count=stats["count"],
+                percentage=pct,
+                usd_value=round(stats["usd"], 2),
+                eur_value=round(stats["eur"], 2)
+            ))
+        p_items.sort(key=lambda x: x.count, reverse=True)
+
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        monthly_freq = {m: 0 for m in months}
+        for i in items:
+            if i.inquiry_date:
+                try:
+                    d_str = str(i.inquiry_date).strip()
+                    dt = None
+                    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%d/%m/%Y", "%m/%d/%Y"):
+                        try:
+                            dt = datetime.strptime(d_str[:10] if len(d_str) >= 10 else d_str, fmt)
+                            break
+                        except ValueError:
+                            continue
+                    if dt:
+                        m_str = months[dt.month - 1]
+                        monthly_freq[m_str] += 1
+                except Exception:
+                    pass
+
+        return CategoryDetailView(
+            category_name=cat_name,
+            total_count=tot_count,
+            total_usd=round(usd_val, 2),
+            total_eur=round(eur_val, 2),
+            principal_breakdown=p_items,
+            monthly_frequency=monthly_freq
+        )
+
+    cat_views = {
+        "Inquiries": build_category_view("Inquiries", non_deleted_inqs),
+        "Declined": build_category_view("Declined", [i for i in non_deleted_inqs if i.status == "Declined"]),
+        "Lost Offers": build_category_view("Lost Offers", [i for i in non_deleted_inqs if i.status == "Lost"]),
+        "Budgetary": build_category_view("Budgetary", [i for i in non_deleted_inqs if (i.offer_type or "").lower() == "budgetary"]),
+        "Ongoing Offers": build_category_view("Ongoing Offers", [i for i in non_deleted_inqs if i.status == "Active"]),
+        "Orders": build_category_view("Orders", [i for i in non_deleted_inqs if i.status in ("Won", "Order")])
     }
 
     return AnnualReportData(
@@ -160,7 +227,8 @@ def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db))
         orders_shipped=orders_shipped,
         orders_paid=orders_paid,
         orders_due_payment=orders_due,
-        chart_distribution=chart_dist
+        chart_distribution=chart_dist,
+        category_views=cat_views
     )
 
 @app.get("/api/inquiries", response_model=List[InquiryOut])
@@ -394,7 +462,7 @@ def transition_status(
             )
             db.add(order)
         else:
-            for k, v in order_data.dict().items():
+            for k, v in order_data.dict(exclude={"source_sheet"}).items():
                 setattr(order, k, v)
     else:
         # If transitioning away from Won, we keep order but it won't show in Orders sheet

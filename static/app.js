@@ -5,6 +5,11 @@ let principalsList = [];
 let activeInquiryIdForComments = null;
 let pipelineChart = null;
 let annualReportChart = null;
+let currentAnnualReportData = null;
+let activeCategoryName = 'Inquiries';
+let catPieChart = null;
+let catBarChart = null;
+let catHistogramChart = null;
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,19 +23,19 @@ function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    
+
     let icon = 'info';
     if (type === 'success') icon = 'check-circle';
     if (type === 'error') icon = 'alert-triangle';
     if (type === 'warning') icon = 'alert-circle';
-    
+
     toast.innerHTML = `
         <i data-lucide="${icon}"></i>
         <span>${message}</span>
     `;
     container.appendChild(toast);
     lucide.createIcons();
-    
+
     // Auto-remove after 4 seconds
     setTimeout(() => {
         toast.style.animation = 'slideIn 0.2s reverse forwards';
@@ -58,20 +63,20 @@ function formatDualMoney(usdVal, eurVal) {
 // Navigation Tab Switcher
 function switchTab(tabId) {
     activeTab = tabId;
-    
+
     // Update sidebar navigation active state
     document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.remove('active');
     });
     const activeNav = document.getElementById(`nav-${tabId}`);
     if (activeNav) activeNav.classList.add('active');
-    
+
     // Toggle main content panels
     document.querySelectorAll('.content-section').forEach(section => {
         section.classList.remove('active');
     });
     document.getElementById(`tab-${tabId}`).classList.add('active');
-    
+
     // Load data specific to tab
     if (tabId === 'dashboard') {
         loadDashboardData();
@@ -113,18 +118,18 @@ async function loadDashboardData() {
         const res = await fetch('/api/dashboard');
         if (!res.ok) throw new Error('Dashboard stats fetch failed');
         const data = await res.json();
-        
+
         // Update header values
         document.getElementById('header-active-val').innerText = formatDualMoney(data.total_value_active_usd, data.total_value_active_eur);
         document.getElementById('header-won-val').innerText = formatDualMoney(data.total_value_won_usd, data.total_value_won_eur);
-        
+
         // Update stats cards
         document.getElementById('stats-active').innerText = data.active_inquiries;
         document.getElementById('stats-active-val').innerText = formatDualMoney(data.total_value_active_usd, data.total_value_active_eur);
-        
+
         document.getElementById('stats-won').innerText = data.won_inquiries;
         document.getElementById('stats-won-val').innerText = formatDualMoney(data.total_value_won_usd, data.total_value_won_eur);
-        
+
         document.getElementById('stats-lost').innerText = data.lost_inquiries;
         document.getElementById('stats-lost-val').innerText = formatDualMoney(data.total_value_lost_usd, data.total_value_lost_eur);
 
@@ -132,7 +137,7 @@ async function loadDashboardData() {
 
         // Render chart
         renderPipelineChart(data);
-        
+
         // Populate alerts list: Inquiries Due (Changed Inspect -> View)
         const inqAlertsList = document.getElementById('alerts-due-week');
         if (data.due_this_week_alerts.length === 0) {
@@ -172,7 +177,7 @@ async function loadDashboardData() {
 function renderPipelineChart(stats) {
     const ctx = document.getElementById('pipelineChart').getContext('2d');
     if (pipelineChart) pipelineChart.destroy();
-    
+
     pipelineChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -203,18 +208,18 @@ async function loadInquiries() {
         const statusFilter = document.getElementById('inquiry-filter-status').value;
         const clientFilter = document.getElementById('inquiry-filter-client').value;
         const principalFilter = document.getElementById('inquiry-filter-principal').value;
-        
+
         let url = '/api/inquiries?';
         if (statusFilter) url += `status=${statusFilter}&`;
-        
+
         const res = await fetch(url);
         let inquiries = await res.json();
-        
+
         populateFilters(inquiries);
 
         if (clientFilter) inquiries = inquiries.filter(i => i.client?.name === clientFilter);
         if (principalFilter) inquiries = inquiries.filter(i => i.principal?.name === principalFilter);
-        
+
         const inquiriesList = document.getElementById('inquiries-list');
         if (inquiries.length === 0) {
             inquiriesList.innerHTML = `<tr><td colspan="11" class="empty-alert">No matching inquiries found in the pipeline.</td></tr>`;
@@ -257,16 +262,16 @@ async function loadInquiries() {
 function populateFilters(data) {
     const clientSelect = document.getElementById('inquiry-filter-client');
     const principalSelect = document.getElementById('inquiry-filter-principal');
-    
+
     const currentClient = clientSelect.value;
     const currentPrincipal = principalSelect.value;
 
     const clients = [...new Set(data.map(i => i.client?.name).filter(Boolean))].sort();
     const principals = [...new Set(data.map(i => i.principal?.name).filter(Boolean))].sort();
 
-    clientSelect.innerHTML = '<option value="">All Clients</option>' + 
+    clientSelect.innerHTML = '<option value="">All Clients</option>' +
         clients.map(c => `<option value="${c}">${c}</option>`).join('');
-    principalSelect.innerHTML = '<option value="">All Principals</option>' + 
+    principalSelect.innerHTML = '<option value="">All Principals</option>' +
         principals.map(p => `<option value="${p}">${p}</option>`).join('');
 
     if (clients.includes(currentClient)) clientSelect.value = currentClient;
@@ -280,11 +285,11 @@ async function onGlobalSearch(query) {
         if (activeTab === 'orders') loadOrders();
         return;
     }
-    
+
     try {
         const res = await fetch(`/api/inquiries?status=All&search=${encodeURIComponent(query)}`);
         const searchResults = await res.json();
-        
+
         if (activeTab === 'inquiries') {
             const list = document.getElementById('inquiries-list');
             if (searchResults.length === 0) {
@@ -329,10 +334,10 @@ async function onGlobalSearch(query) {
                         <td>${o.order_date || '-'}</td>
                         <td>${o.expected_delivery_date || '-'}</td>
                         <td style="font-weight:600">${formatMoney(o.total_order_value, o.currency)}</td>
-                        <td><span class="status-badge status-won">${o.order_status || 'Under Production'}</span></td>
-                        <td><span class="status-badge" style="background:rgba(59,130,246,0.1); color:#60a5fa">${o.payment_status || 'CAD'}</span></td>
-                        <td>${o.performance_bond_guarantee || '-'}</td>
-                        <td class="no-print">
+                        <td>${getOrderStatusBadge(o.order_status)}</td>
+                        <td class="col-compact">${getPaymentStatusBadge(o.payment_status)}</td>
+                        <td class="col-compact">${truncateText(o.performance_bond_guarantee, 30)}</td>
+                        <td class="no-print col-compact">
                             <button class="btn btn-secondary btn-sm" onclick="viewInquiryDetail(${inq.id})">Full Spec</button>
                             <button class="btn btn-primary btn-sm" onclick="openEditOrderModal(${inq.id})">Edit</button>
                         </td>
@@ -346,19 +351,62 @@ async function onGlobalSearch(query) {
 }
 
 // --- ORDERS CONTROLLER ---
+function truncateText(val, maxLen = 35) {
+    if (!val || val === '-') return '-';
+    const str = String(val).trim();
+    if (str.length <= maxLen) return str;
+    const safeStr = str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    return `<span title="${safeStr}" class="truncated-cell">${str.substring(0, maxLen)}...</span>`;
+}
+
+function getOrderStatusBadge(status) {
+    const s = status || 'Under Approval';
+    const statusKey = s.toLowerCase().replace(/\s+/g, '-');
+    return `<span class="status-badge status-order-${statusKey}">${s}</span>`;
+}
+
+function getPaymentStatusBadge(status) {
+    if (!status) return `<span class="status-badge status-pay-underpayment">Under Payment</span>`;
+    const s = String(status).trim();
+    
+    let displayLabel = s;
+    let badgeClass = 'status-pay-underpayment';
+
+    if (s === 'Paid' || s.endsWith('Paid')) {
+        badgeClass = 'status-pay-paid';
+    } else if (s === 'Payment Submitted') {
+        badgeClass = 'status-pay-submitted';
+    }
+
+    if (s.length > 30) {
+        displayLabel = s.substring(0, 30) + '...';
+    }
+
+    const safeTitle = s.replace(/"/g, '&quot;');
+    return `<span class="status-badge ${badgeClass}" title="${safeTitle}">${displayLabel}</span>`;
+}
+
 async function loadOrders() {
     try {
-        const sheetFilter = document.getElementById('order-filter-sheet').value;
+        const sheetFilter = document.getElementById('order-filter-sheet')?.value;
+        const statusFilter = document.getElementById('order-filter-status')?.value;
+        const payStatusFilter = document.getElementById('order-filter-payment-status')?.value;
         const res = await fetch('/api/inquiries?status=Order');
         let wonInquiries = await res.json();
-        
+
         if (sheetFilter) {
             wonInquiries = wonInquiries.filter(inq => inq.order?.source_sheet === sheetFilter);
+        }
+        if (statusFilter) {
+            wonInquiries = wonInquiries.filter(inq => inq.order?.order_status === statusFilter);
+        }
+        if (payStatusFilter) {
+            wonInquiries = wonInquiries.filter(inq => inq.order?.payment_status === payStatusFilter);
         }
 
         const ordersList = document.getElementById('orders-list');
         if (wonInquiries.length === 0) {
-            ordersList.innerHTML = `<tr><td colspan="10" class="empty-alert">No orders recorded under this sheet.</td></tr>`;
+            ordersList.innerHTML = `<tr><td colspan="10" class="empty-alert">No orders recorded matching criteria.</td></tr>`;
             return;
         }
 
@@ -372,10 +420,10 @@ async function loadOrders() {
                     <td>${o.order_date || '-'}</td>
                     <td>${o.expected_delivery_date ? `<strong>${o.expected_delivery_date}</strong>` : '-'}</td>
                     <td style="font-weight:600">${formatMoney(o.total_order_value, o.currency)}</td>
-                    <td><span class="status-badge status-won">${o.order_status || 'Under Production'}</span></td>
-                    <td><span class="status-badge" style="background:rgba(59,130,246,0.1); color:#60a5fa">${o.payment_status || 'CAD'}</span></td>
-                    <td>${o.performance_bond_guarantee || '-'}</td>
-                    <td class="no-print">
+                    <td>${getOrderStatusBadge(o.order_status)}</td>
+                    <td class="col-compact">${getPaymentStatusBadge(o.payment_status)}</td>
+                    <td class="col-compact">${truncateText(o.performance_bond_guarantee, 30)}</td>
+                    <td class="no-print col-compact">
                         <div style="display:flex; gap:0.4rem">
                             <button class="btn btn-secondary btn-sm" onclick="viewInquiryDetail(${inq.id})">Full Spec</button>
                             <button class="btn btn-primary btn-sm" onclick="openEditOrderModal(${inq.id})">Edit</button>
@@ -392,99 +440,274 @@ async function loadOrders() {
 // --- ANNUAL REPORT CONTROLLER ---
 async function loadAnnualReport() {
     try {
-        const yearSelect = document.getElementById('report-year-select').value;
+        const yearSelect = document.getElementById('report-year-select')?.value || 'All';
         const url = yearSelect === 'All' ? '/api/annual-report' : `/api/annual-report?year=${yearSelect}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Annual report fetch failed');
+        if (!res.ok) throw new Error(`Server error: HTTP ${res.status}`);
         const data = await res.json();
 
+        const setTxt = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = (val !== undefined && val !== null) ? val : '-';
+        };
+
         // 1) Inquiries / Tenders
-        document.getElementById('rpt-tenders-count').innerText = data.tenders_total.count;
-        document.getElementById('rpt-tenders-usd').innerText = formatMoney(data.tenders_total.values.usd, 'USD');
-        document.getElementById('rpt-tenders-eur').innerText = formatMoney(data.tenders_total.values.eur, 'EUR');
+        setTxt('rpt-tenders-count', data.tenders_total?.count || 0);
+        setTxt('rpt-tenders-usd', formatMoney(data.tenders_total?.values?.usd || 0, 'USD'));
+        setTxt('rpt-tenders-eur', formatMoney(data.tenders_total?.values?.eur || 0, 'EUR'));
 
-        document.getElementById('rpt-canc-count').innerText = data.tenders_cancelled.count;
-        document.getElementById('rpt-canc-usd').innerText = formatMoney(data.tenders_cancelled.values.usd, 'USD');
-        document.getElementById('rpt-canc-eur').innerText = formatMoney(data.tenders_cancelled.values.eur, 'EUR');
+        setTxt('rpt-canc-count', data.tenders_cancelled?.count || 0);
+        setTxt('rpt-canc-usd', formatMoney(data.tenders_cancelled?.values?.usd || 0, 'USD'));
+        setTxt('rpt-canc-eur', formatMoney(data.tenders_cancelled?.values?.eur || 0, 'EUR'));
 
-        document.getElementById('rpt-decl-count').innerText = data.tenders_declined.count;
-        document.getElementById('rpt-decl-usd').innerText = formatMoney(data.tenders_declined.values.usd, 'USD');
-        document.getElementById('rpt-decl-eur').innerText = formatMoney(data.tenders_declined.values.eur, 'EUR');
+        setTxt('rpt-decl-count', data.tenders_declined?.count || 0);
+        setTxt('rpt-decl-usd', formatMoney(data.tenders_declined?.values?.usd || 0, 'USD'));
+        setTxt('rpt-decl-eur', formatMoney(data.tenders_declined?.values?.eur || 0, 'EUR'));
 
-        document.getElementById('rpt-firm-count').innerText = data.tenders_firm.count;
-        document.getElementById('rpt-firm-usd').innerText = formatMoney(data.tenders_firm.values.usd, 'USD');
-        document.getElementById('rpt-firm-eur').innerText = formatMoney(data.tenders_firm.values.eur, 'EUR');
+        setTxt('rpt-firm-count', data.tenders_firm?.count || 0);
+        setTxt('rpt-firm-usd', formatMoney(data.tenders_firm?.values?.usd || 0, 'USD'));
+        setTxt('rpt-firm-eur', formatMoney(data.tenders_firm?.values?.eur || 0, 'EUR'));
 
-        document.getElementById('rpt-budg-count').innerText = data.tenders_budgetary.count;
-        document.getElementById('rpt-budg-usd').innerText = formatMoney(data.tenders_budgetary.values.usd, 'USD');
-        document.getElementById('rpt-budg-eur').innerText = formatMoney(data.tenders_budgetary.values.eur, 'EUR');
+        setTxt('rpt-budg-count', data.tenders_budgetary?.count || 0);
+        setTxt('rpt-budg-usd', formatMoney(data.tenders_budgetary?.values?.usd || 0, 'USD'));
+        setTxt('rpt-budg-eur', formatMoney(data.tenders_budgetary?.values?.eur || 0, 'EUR'));
 
         // 2) Submitted Offers
-        document.getElementById('rpt-ong-count').innerText = data.submitted_ongoing.count;
-        document.getElementById('rpt-ong-usd').innerText = formatMoney(data.submitted_ongoing.values.usd, 'USD');
-        document.getElementById('rpt-ong-eur').innerText = formatMoney(data.submitted_ongoing.values.eur, 'EUR');
+        setTxt('rpt-ong-count', data.submitted_ongoing?.count || 0);
+        setTxt('rpt-ong-usd', formatMoney(data.submitted_ongoing?.values?.usd || 0, 'USD'));
+        setTxt('rpt-ong-eur', formatMoney(data.submitted_ongoing?.values?.eur || 0, 'EUR'));
 
-        document.getElementById('rpt-award-count').innerText = data.submitted_awarded.count;
-        document.getElementById('rpt-award-usd').innerText = formatMoney(data.submitted_awarded.values.usd, 'USD');
-        document.getElementById('rpt-award-eur').innerText = formatMoney(data.submitted_awarded.values.eur, 'EUR');
+        setTxt('rpt-award-count', data.submitted_awarded?.count || 0);
+        setTxt('rpt-award-usd', formatMoney(data.submitted_awarded?.values?.usd || 0, 'USD'));
+        setTxt('rpt-award-eur', formatMoney(data.submitted_awarded?.values?.eur || 0, 'EUR'));
 
-        document.getElementById('rpt-lost-count').innerText = data.submitted_lost.count;
-        document.getElementById('rpt-lost-usd').innerText = formatMoney(data.submitted_lost.values.usd, 'USD');
-        document.getElementById('rpt-lost-eur').innerText = formatMoney(data.submitted_lost.values.eur, 'EUR');
+        setTxt('rpt-lost-count', data.submitted_lost?.count || 0);
+        setTxt('rpt-lost-usd', formatMoney(data.submitted_lost?.values?.usd || 0, 'USD'));
+        setTxt('rpt-lost-eur', formatMoney(data.submitted_lost?.values?.eur || 0, 'EUR'));
 
         // 3) Orders Breakdown
-        document.getElementById('rpt-ord-prod-count').innerText = data.orders_under_production.count;
-        document.getElementById('rpt-ord-prod-usd').innerText = formatMoney(data.orders_under_production.values.usd, 'USD');
-        document.getElementById('rpt-ord-prod-eur').innerText = formatMoney(data.orders_under_production.values.eur, 'EUR');
+        setTxt('rpt-ord-prod-count', data.orders_under_production?.count || 0);
+        setTxt('rpt-ord-prod-usd', formatMoney(data.orders_under_production?.values?.usd || 0, 'USD'));
+        setTxt('rpt-ord-prod-eur', formatMoney(data.orders_under_production?.values?.eur || 0, 'EUR'));
 
-        document.getElementById('rpt-ord-ship-count').innerText = data.orders_shipped.count;
-        document.getElementById('rpt-ord-ship-usd').innerText = formatMoney(data.orders_shipped.values.usd, 'USD');
-        document.getElementById('rpt-ord-ship-eur').innerText = formatMoney(data.orders_shipped.values.eur, 'EUR');
+        setTxt('rpt-ord-ship-count', data.orders_shipped?.count || 0);
+        setTxt('rpt-ord-ship-usd', formatMoney(data.orders_shipped?.values?.usd || 0, 'USD'));
+        setTxt('rpt-ord-ship-eur', formatMoney(data.orders_shipped?.values?.eur || 0, 'EUR'));
 
-        document.getElementById('rpt-ord-paid-count').innerText = data.orders_paid.count;
-        document.getElementById('rpt-ord-paid-usd').innerText = formatMoney(data.orders_paid.values.usd, 'USD');
-        document.getElementById('rpt-ord-paid-eur').innerText = formatMoney(data.orders_paid.values.eur, 'EUR');
+        setTxt('rpt-ord-paid-count', data.orders_paid?.count || 0);
+        setTxt('rpt-ord-paid-usd', formatMoney(data.orders_paid?.values?.usd || 0, 'USD'));
+        setTxt('rpt-ord-paid-eur', formatMoney(data.orders_paid?.values?.eur || 0, 'EUR'));
 
-        document.getElementById('rpt-ord-due-count').innerText = data.orders_due_payment.count;
-        document.getElementById('rpt-ord-due-usd').innerText = formatMoney(data.orders_due_payment.values.usd, 'USD');
-        document.getElementById('rpt-ord-due-eur').innerText = formatMoney(data.orders_due_payment.values.eur, 'EUR');
+        setTxt('rpt-ord-due-count', data.orders_due_payment?.count || 0);
+        setTxt('rpt-ord-due-usd', formatMoney(data.orders_due_payment?.values?.usd || 0, 'USD'));
+        setTxt('rpt-ord-due-eur', formatMoney(data.orders_due_payment?.values?.eur || 0, 'EUR'));
 
-        // Render Pie Chart for Detailed Overview
-        renderAnnualReportChart(data.chart_distribution);
+        // Render Category Detailed Overview & Charts
+        currentAnnualReportData = data;
+        switchReportCategory(activeCategoryName || 'Inquiries');
     } catch (e) {
-        showToast('Error loading annual report', 'error');
+        console.error('Error loading annual report:', e);
+        showToast(`Error loading annual report: ${e.message || e}`, 'error');
     }
 }
 
-function renderAnnualReportChart(dist) {
-    const ctx = document.getElementById('annualReportChart').getContext('2d');
-    if (annualReportChart) annualReportChart.destroy();
+function switchReportCategory(catName) {
+    activeCategoryName = catName;
+    document.querySelectorAll('.category-tab').forEach(btn => {
+        const btnCat = btn.getAttribute('data-category') || btn.innerText.trim();
+        const formattedCatId = `cat-tab-${catName.replace(/ /g, '-')}`;
+        if (btnCat.toLowerCase() === catName.toLowerCase() || btn.id === `cat-tab-${catName}` || btn.id === formattedCatId) {
+            btn.classList.add('active', 'btn-primary');
+            btn.classList.remove('btn-secondary');
+        } else {
+            btn.classList.remove('active', 'btn-primary');
+            btn.classList.add('btn-secondary');
+        }
+    });
 
-    const labels = Object.keys(dist);
-    const counts = Object.values(dist);
+    if (currentAnnualReportData && currentAnnualReportData.category_views) {
+        renderCategoryView(catName);
+    } else {
+        loadAnnualReport();
+    }
+}
 
-    annualReportChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: counts,
-                backgroundColor: ['#3b82f6', '#10b981', '#ef4444', '#64748b', '#f59e0b'],
-                borderWidth: 1,
-                borderColor: '#1e293b'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { color: '#f8fafc', font: { family: 'Outfit', size: 12 } }
+function renderCategoryView(catName) {
+    try {
+        const viewData = currentAnnualReportData?.category_views?.[catName];
+        if (!viewData) return;
+
+        const titleEl = document.getElementById('cat-view-title');
+        if (titleEl) titleEl.innerText = `${catName} Category Overview`;
+
+        const countEl = document.getElementById('cat-stat-count');
+        if (countEl) countEl.innerText = viewData.total_count || 0;
+
+        const usdEl = document.getElementById('cat-stat-usd');
+        if (usdEl) usdEl.innerText = formatMoney(viewData.total_usd || 0, 'USD');
+
+        const eurEl = document.getElementById('cat-stat-eur');
+        if (eurEl) eurEl.innerText = formatMoney(viewData.total_eur || 0, 'EUR');
+
+        // 1. Summary Table
+        const tbody = document.getElementById('cat-summary-tbody');
+        const tfoot = document.getElementById('cat-summary-tfoot');
+        const breakdown = viewData.principal_breakdown || [];
+
+        if (tbody) {
+            if (breakdown.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 1.5rem;">No record entries found under <strong>${catName}</strong>.</td></tr>`;
+                if (tfoot) tfoot.innerHTML = '';
+            } else {
+                tbody.innerHTML = breakdown.map(item => {
+                    const pctVal = (Number(item?.percentage) || 0).toFixed(1);
+                    const usdVal = formatMoney(item?.usd_value || 0, 'USD');
+                    const eurVal = formatMoney(item?.eur_value || 0, 'EUR');
+                    const pName = item?.name || 'Unknown Principal';
+                    const cnt = item?.count || 0;
+                    return `
+                        <tr>
+                            <td><strong>${pName}</strong></td>
+                            <td>${cnt}</td>
+                            <td><span class="status-badge" style="background:rgba(59,130,246,0.1); color:#60a5fa">${pctVal}%</span></td>
+                            <td>${usdVal}</td>
+                            <td>${eurVal}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                if (tfoot) {
+                    tfoot.innerHTML = `
+                        <tr class="table-row-highlight" style="font-weight: 700; background: var(--bg-hover);">
+                            <td>TOTALS</td>
+                            <td>${viewData.total_count || 0}</td>
+                            <td>100.0%</td>
+                            <td>${formatMoney(viewData.total_usd || 0, 'USD')}</td>
+                            <td>${formatMoney(viewData.total_eur || 0, 'EUR')}</td>
+                        </tr>
+                    `;
                 }
             }
         }
-    });
+
+        // 2. Charts
+        const pNames = breakdown.map(b => b?.name || 'Unknown');
+        const pCounts = breakdown.map(b => b?.count || 0);
+
+        // Pie Chart (Principal Share Distribution)
+        try {
+            const ctxPieEl = document.getElementById('catPieChart');
+            if (ctxPieEl && typeof Chart !== 'undefined') {
+                const existingChart = Chart.getChart(ctxPieEl);
+                if (existingChart) existingChart.destroy();
+                if (catPieChart) { try { catPieChart.destroy(); } catch(e){} catPieChart = null; }
+
+                const ctxPie = ctxPieEl.getContext('2d');
+                catPieChart = new Chart(ctxPie, {
+                    type: 'pie',
+                    data: {
+                        labels: pNames.length > 0 ? pNames : ['No Data'],
+                        datasets: [{
+                            data: pCounts.length > 0 ? pCounts : [1],
+                            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#64748b'],
+                            borderWidth: 1,
+                            borderColor: '#1e293b'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: '#f8fafc', font: { family: 'Outfit', size: 11 } } }
+                        }
+                    }
+                });
+            }
+        } catch (pieErr) {
+            console.error('Error rendering catPieChart:', pieErr);
+        }
+
+        // Bar Chart (Principal Comparison)
+        try {
+            const ctxBarEl = document.getElementById('catBarChart');
+            if (ctxBarEl && typeof Chart !== 'undefined') {
+                const existingChart = Chart.getChart(ctxBarEl);
+                if (existingChart) existingChart.destroy();
+                if (catBarChart) { try { catBarChart.destroy(); } catch(e){} catBarChart = null; }
+
+                const ctxBar = ctxBarEl.getContext('2d');
+                catBarChart = new Chart(ctxBar, {
+                    type: 'bar',
+                    data: {
+                        labels: pNames.length > 0 ? pNames : ['No Data'],
+                        datasets: [
+                            {
+                                label: 'Record Count',
+                                data: pCounts.length > 0 ? pCounts : [0],
+                                backgroundColor: '#3b82f6',
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+                        },
+                        plugins: { legend: { labels: { color: '#f8fafc' } } }
+                    }
+                });
+            }
+        } catch (barErr) {
+            console.error('Error rendering catBarChart:', barErr);
+        }
+
+        // Monthly Frequency Histogram
+        try {
+            const ctxHistoEl = document.getElementById('catHistogramChart');
+            if (ctxHistoEl && typeof Chart !== 'undefined') {
+                const existingChart = Chart.getChart(ctxHistoEl);
+                if (existingChart) existingChart.destroy();
+                if (catHistogramChart) { try { catHistogramChart.destroy(); } catch(e){} catHistogramChart = null; }
+
+                const ctxHisto = ctxHistoEl.getContext('2d');
+                const mFreq = viewData.monthly_frequency || {};
+                const months = Object.keys(mFreq);
+                const mCounts = Object.values(mFreq);
+
+                catHistogramChart = new Chart(ctxHisto, {
+                    type: 'bar',
+                    data: {
+                        labels: months,
+                        datasets: [{
+                            label: 'Monthly Frequency',
+                            data: mCounts,
+                            backgroundColor: 'rgba(16, 185, 129, 0.65)',
+                            borderColor: '#10b981',
+                            borderWidth: 1,
+                            barPercentage: 0.9,
+                            categoryPercentage: 0.9
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { title: { display: true, text: 'Month', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            y: { title: { display: true, text: 'Frequency (Count)', color: '#94a3b8' }, ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+                        },
+                        plugins: { legend: { labels: { color: '#f8fafc' } } }
+                    }
+                });
+            }
+        } catch (histoErr) {
+            console.error('Error rendering catHistogramChart:', histoErr);
+        }
+    } catch (err) {
+        console.error('renderCategoryView error:', err);
+    }
 }
 
 // --- ACTIVITY AUDIT LOG CONTROLLER ---
@@ -492,7 +715,7 @@ async function loadActivityLogs() {
     try {
         const res = await fetch('/api/activity-logs');
         const logs = await res.json();
-        
+
         const timeline = document.getElementById('activity-timeline');
         if (logs.length === 0) {
             timeline.innerHTML = '<div class="empty-alert">No system logs recorded yet.</div>';
@@ -521,7 +744,7 @@ async function loadTrash() {
     try {
         const res = await fetch('/api/inquiries?show_deleted=true');
         const deleted = await res.json();
-        
+
         const trashList = document.getElementById('trash-list');
         if (deleted.length === 0) {
             trashList.innerHTML = `<tr><td colspan="6" class="empty-alert">Trash bin is empty.</td></tr>`;
@@ -589,10 +812,10 @@ function openNewInquiryModal() {
     document.getElementById('form-inquiry').reset();
     document.getElementById('inq-id').value = '';
     document.getElementById('inq-id').removeAttribute('value');
-    
+
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('inq-date').value = today;
-    
+
     openModal('modal-inquiry');
 }
 
@@ -600,7 +823,7 @@ async function openEditInquiryModal(id) {
     try {
         const res = await fetch(`/api/inquiries/${id}`);
         const inq = await res.json();
-        
+
         document.getElementById('modal-inquiry-title').innerText = 'Modify Inquiry Specs';
         document.getElementById('inq-id').value = inq.id;
         document.getElementById('inq-date').value = inq.inquiry_date || '';
@@ -638,8 +861,8 @@ async function openEditOrderModal(id) {
         document.getElementById('ord-val').value = o.order_value || inq.value || 0;
         document.getElementById('ord-additionals').value = o.additionals || 0;
         document.getElementById('ord-total').value = o.total_order_value || o.order_value || 0;
-        document.getElementById('ord-status').value = o.order_status || 'Under Production';
-        document.getElementById('ord-payment-status').value = o.payment_status || 'Order ready';
+        document.getElementById('ord-status').value = o.order_status || 'Under Approval';
+        document.getElementById('ord-payment-status').value = o.payment_status || 'Under Payment';
         document.getElementById('ord-perf-bond').value = o.performance_bond_guarantee || inq.performance_bond || '';
         document.getElementById('ord-conf-num').value = o.order_confirmation_number || '';
         document.getElementById('ord-commission').value = o.team_commission || '';
@@ -648,7 +871,7 @@ async function openEditOrderModal(id) {
         document.getElementById('ord-payment-method').value = o.payment_method || 'CAD';
 
         openModal('modal-order-transition');
-    } catch(e) {
+    } catch (e) {
         showToast('Failed to fetch order specs', 'error');
     }
 }
@@ -656,7 +879,7 @@ async function openEditOrderModal(id) {
 async function saveInquiry(e) {
     e.preventDefault();
     const id = document.getElementById('inq-id').value;
-    
+
     const payload = {
         inquiry_date: document.getElementById('inq-date').value,
         due_date: document.getElementById('inq-due').value || null,
@@ -732,33 +955,56 @@ async function restoreInquiry(id) {
 async function viewInquiryDetail(id) {
     try {
         const res = await fetch(`/api/inquiries/${id}`);
+        if (!res.ok) throw new Error('Failed to load inquiry details');
         const inq = await res.json();
-        
-        activeInquiryIdForComments = inq.id;
-        
-        document.getElementById('detail-client').innerText = inq.client?.name || '-';
-        document.getElementById('detail-principal').innerText = inq.principal?.name || '-';
-        document.getElementById('detail-date').innerText = inq.inquiry_date || '-';
-        document.getElementById('detail-due').innerText = inq.due_date || '-';
-        document.getElementById('detail-value').innerText = formatMoney(inq.value, inq.currency);
-        document.getElementById('detail-offer-type').innerText = inq.offer_type || 'Firm';
-        document.getElementById('detail-last-update').innerText = inq.last_update || '-';
-        document.getElementById('detail-submission').innerText = inq.submission_method || '-';
-        document.getElementById('detail-bid-bond').innerText = inq.bid_bond_value || '-';
-        document.getElementById('detail-perf-bond').innerText = inq.performance_bond || '-';
-        document.getElementById('detail-validity').innerText = inq.quotation_validity || '-';
-        document.getElementById('detail-expire').innerText = inq.expiration_date || '-';
-        document.getElementById('detail-contact').innerText = inq.contact_person || '-';
-        document.getElementById('detail-ref').innerText = inq.inquiry_reference || '-';
-        document.getElementById('detail-quotation').innerText = inq.quotation_reference || '-';
-        
-        const statusBadge = document.getElementById('detail-status');
-        statusBadge.className = `status-badge status-${inq.status.toLowerCase()}`;
-        statusBadge.innerText = inq.status;
 
-        renderCommentsList(inq.comments);
+        activeInquiryIdForComments = inq.id;
+
+        const setFieldText = (elemId, text) => {
+            const el = document.getElementById(elemId);
+            if (el) el.innerText = text || '-';
+        };
+
+        setFieldText('detail-client', inq.client?.name);
+        setFieldText('detail-principal', inq.principal?.name);
+        setFieldText('detail-date', inq.inquiry_date);
+        setFieldText('detail-due', inq.due_date);
+        setFieldText('detail-value', formatMoney(inq.value, inq.currency));
+        setFieldText('detail-offer-type', inq.offer_type || 'Firm');
+        setFieldText('detail-last-update', inq.last_update);
+        setFieldText('detail-submission', inq.submission_method);
+        setFieldText('detail-bid-bond', inq.bid_bond_value);
+        setFieldText('detail-perf-bond', inq.performance_bond);
+        setFieldText('detail-validity', inq.quotation_validity);
+        setFieldText('detail-expire', inq.expiration_date);
+        setFieldText('detail-contact', inq.contact_person);
+        setFieldText('detail-ref', inq.inquiry_reference);
+        setFieldText('detail-quotation', inq.quotation_reference);
+
+        const statusBadge = document.getElementById('detail-status');
+        if (statusBadge) {
+            const rawStatus = (inq.status || 'Active').trim();
+            const statusKey = rawStatus.toLowerCase().replace(/\s+/g, '-');
+            statusBadge.className = `status-badge status-${statusKey}`;
+            statusBadge.innerText = rawStatus;
+        }
+
+        const o = inq.order || {};
+
+        const ordStatusSpan = document.getElementById('detail-order-status');
+        if (ordStatusSpan) {
+            ordStatusSpan.innerHTML = getOrderStatusBadge(o.order_status || 'Under Approval');
+        }
+
+        const payStatusSpan = document.getElementById('detail-payment-status');
+        if (payStatusSpan) {
+            payStatusSpan.innerHTML = getPaymentStatusBadge(o.payment_status || 'Under Payment');
+        }
+
+        renderCommentsList(inq.comments || []);
         openModal('modal-details');
     } catch (e) {
+        console.error('Error loading inquiry details:', e);
         showToast('Could not load detail specifications', 'error');
     }
 }
@@ -789,7 +1035,7 @@ async function submitNewComment() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: content })
         });
-        
+
         if (res.ok) {
             textInput.value = '';
             const commentsRes = await fetch(`/api/inquiries/${activeInquiryIdForComments}/comments`);
@@ -809,7 +1055,7 @@ async function triggerTransition(id, targetStatus) {
     if (targetStatus === 'Won' || targetStatus === 'Order') {
         document.getElementById('form-order-transition').reset();
         document.getElementById('trans-inq-id').value = id;
-        
+
         try {
             const inqRes = await fetch(`/api/inquiries/${id}`);
             const inq = await inqRes.json();
@@ -818,8 +1064,8 @@ async function triggerTransition(id, targetStatus) {
             document.getElementById('ord-currency').value = inq.currency || 'USD';
             document.getElementById('ord-perf-bond').value = inq.performance_bond || '';
             document.getElementById('ord-date').value = new Date().toISOString().split('T')[0];
-        } catch(e) {}
-        
+        } catch (e) { }
+
         openModal('modal-order-transition');
     } else {
         if (!confirm(`Are you sure you want to transition this inquiry to "${targetStatus}"?`)) return;
@@ -843,7 +1089,7 @@ async function triggerTransition(id, targetStatus) {
 async function saveOrderTransition(e) {
     e.preventDefault();
     const id = document.getElementById('trans-inq-id').value;
-    
+
     const orderPayload = {
         order_number: document.getElementById('ord-number').value,
         order_date: document.getElementById('ord-date').value,
@@ -1021,9 +1267,12 @@ async function loadCompanyReport() {
                             <td>${formatMoney(inq.value, inq.currency)}</td>
                             <td>${inq.last_update || '-'}</td>
                             <td><span class="status-badge ${statusClass}">${inq.status}</span></td>
-                            <td>
-                                <button class="btn btn-secondary btn-sm" onclick="viewInquiryDetails(${inq.id})">
+                            <td style="display:flex; gap:0.4rem">
+                                <button class="btn btn-secondary btn-sm" onclick="viewInquiryDetail(${inq.id})">
                                     <i data-lucide="eye"></i> View
+                                </button>
+                                <button class="btn btn-primary btn-sm" style="background:var(--accent-light); border-color:var(--accent-light);" onclick="printInquiry(${inq.id})">
+                                    <i data-lucide="printer"></i> Print
                                 </button>
                             </td>
                         </tr>
@@ -1160,7 +1409,7 @@ function closeExportMenus() {
     });
 }
 
-document.addEventListener('click', function(event) {
+document.addEventListener('click', function (event) {
     if (!event.target.closest('.export-dropdown')) {
         closeExportMenus();
     }
@@ -1170,7 +1419,27 @@ function getCleanReportContent(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return '';
     const clone = container.cloneNode(true);
-    
+
+    // Convert active canvases in container into img tags in clone
+    const origCanvases = container.querySelectorAll('canvas');
+    const cloneCanvases = clone.querySelectorAll('canvas');
+    origCanvases.forEach((origCanvas, idx) => {
+        if (cloneCanvases[idx]) {
+            try {
+                const dataUrl = origCanvas.toDataURL('image/png');
+                const img = document.createElement('img');
+                img.src = dataUrl;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '280px';
+                img.style.display = 'block';
+                img.style.margin = '10px auto';
+                cloneCanvases[idx].parentNode.replaceChild(img, cloneCanvases[idx]);
+            } catch (e) {
+                console.error('Failed to convert canvas for report export:', e);
+            }
+        }
+    });
+
     // Remove non-printable elements, filter ribbons, buttons, search inputs
     clone.querySelectorAll('.no-print, .filter-ribbon, button, select, input, .export-dropdown').forEach(el => el.remove());
     return clone.innerHTML;
@@ -1305,3 +1574,185 @@ function exportReportToPDF() {
     closeExportMenus();
     window.print();
 }
+
+async function printInquiry(id) {
+    try {
+        const targetId = id || activeInquiryIdForComments;
+        if (!targetId) {
+            showToast('No inquiry selected to print', 'error');
+            return;
+        }
+        const res = await fetch(`/api/inquiries/${targetId}`);
+        if (!res.ok) throw new Error('Failed to fetch inquiry details');
+        const inq = await res.json();
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast('Pop-up blocked! Please allow pop-ups to print specs.', 'error');
+            return;
+        }
+
+        const o = inq.order || {};
+        const orderStatusText = o.order_status || 'Under Approval';
+        const paymentStatusText = o.payment_status || 'Under Payment';
+
+        const commentsHtml = (inq.comments || []).map(c => `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3px solid #3b82f6; border-radius: 6px; padding: 12px; margin-bottom: 10px; font-family: sans-serif;">
+                <div style="font-size: 14px; color: #1e293b; line-height: 1.5; white-space: pre-wrap;">${c.content}</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 6px; font-style: italic; text-align: right;">Date: ${new Date(c.created_at).toLocaleString()}</div>
+            </div>
+        `).join('') || '<div style="color: #64748b; font-style: italic; font-size: 13px; padding-top: 8px;">No comment/update history recorded.</div>';
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>Inquiry Specifications - ID ${inq.id}</title>
+                <style>
+                    body {
+                        font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        color: #1e293b;
+                        line-height: 1.5;
+                        padding: 30px;
+                        background: #ffffff;
+                    }
+                    .header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-bottom: 2px solid #3b82f6;
+                        padding-bottom: 12px;
+                        margin-bottom: 20px;
+                    }
+                    .header h1 {
+                        margin: 0;
+                        font-size: 24px;
+                        color: #1e3a8a;
+                    }
+                    .print-btn {
+                        padding: 8px 16px;
+                        background: #3b82f6;
+                        color: #ffffff;
+                        border: none;
+                        border-radius: 4px;
+                        font-weight: bold;
+                        cursor: pointer;
+                    }
+                    h2 {
+                        font-size: 16px;
+                        color: #1e40af;
+                        border-bottom: 1px solid #e2e8f0;
+                        padding-bottom: 6px;
+                        margin-top: 25px;
+                        margin-bottom: 10px;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 12px;
+                        margin-bottom: 15px;
+                    }
+                    .grid-item {
+                        padding: 6px 10px;
+                        background: #f8fafc;
+                        border: 1px solid #f1f5f9;
+                        border-radius: 4px;
+                    }
+                    .label {
+                        font-weight: bold;
+                        color: #475569;
+                        font-size: 11px;
+                        text-transform: uppercase;
+                        margin-bottom: 2px;
+                    }
+                    .value {
+                        font-size: 14px;
+                        color: #0f172a;
+                    }
+                    .block {
+                        background: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 4px;
+                        padding: 12px;
+                        font-size: 14px;
+                        color: #1e293b;
+                        white-space: pre-wrap;
+                        min-height: 40px;
+                    }
+                    .footer {
+                        margin-top: 40px;
+                        font-size: 11px;
+                        color: #94a3b8;
+                        text-align: center;
+                        border-top: 1px solid #f1f5f9;
+                        padding-top: 10px;
+                    }
+                    @media print {
+                        body { padding: 0; }
+                        .print-btn { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>TEAM Engineering CRM - Inquiry Specification Sheet</h1>
+                    <button class="print-btn" onclick="window.print()">Print Document</button>
+                </div>
+                <div style="font-size: 12px; color: #64748b; margin-top: -10px; margin-bottom: 20px;">
+                    Generated on: ${new Date().toLocaleString()} | Inquiry Database ID: <strong>#${inq.id}</strong>
+                </div>
+
+                <h2>Specifications</h2>
+                <div class="grid">
+                    <div class="grid-item"><div class="label">Client Name</div><div class="value">${inq.client?.name || '-'}</div></div>
+                    <div class="grid-item"><div class="label">Principal Manufacturer</div><div class="value">${inq.principal?.name || '-'}</div></div>
+                    <div class="grid-item"><div class="label">Inquiry Date</div><div class="value">${inq.inquiry_date || '-'}</div></div>
+                    <div class="grid-item"><div class="label">Due Date</div><div class="value">${inq.due_date ? '<strong>' + inq.due_date + '</strong>' : '-'}</div></div>
+                    <div class="grid-item"><div class="label">Value</div><div class="value" style="font-weight: 600;">${formatMoney(inq.value, inq.currency)}</div></div>
+                    <div class="grid-item"><div class="label">Offer Type</div><div class="value">${inq.offer_type || 'Firm'}</div></div>
+                    <div class="grid-item"><div class="label">Submission Method</div><div class="value">${inq.submission_method || '-'}</div></div>
+                    <div class="grid-item"><div class="label">Stage status</div><div class="value" style="font-weight: 600;">${inq.status || '-'}</div></div>
+                    <div class="grid-item"><div class="label">Order Status</div><div class="value" style="font-weight: 600; color:#2563eb;">${orderStatusText}</div></div>
+                    <div class="grid-item"><div class="label">Payment Status</div><div class="value" style="font-weight: 600; color:#d97706;">${paymentStatusText}</div></div>
+                    <div class="grid-item"><div class="label">Bid Bond Value</div><div class="value">${inq.bid_bond_value || '-'}</div></div>
+                    <div class="grid-item"><div class="label">Performance Bond</div><div class="value">${inq.performance_bond || '-'}</div></div>
+                    <div class="grid-item"><div class="label">Quotation Validity</div><div class="value">${inq.quotation_validity || '-'}</div></div>
+                    <div class="grid-item"><div class="label">Expiration Date</div><div class="value">${inq.expiration_date || '-'}</div></div>
+                    <div class="grid-item" style="grid-column: span 2;"><div class="label">Contact Person</div><div class="value">${inq.contact_person || '-'}</div></div>
+                </div>
+
+                <h2>Inquiry Reference / Project Details</h2>
+                <div class="block">${inq.inquiry_reference || '-'}</div>
+
+                <h2>Quotation Reference</h2>
+                <div class="block">${inq.quotation_reference || '-'}</div>
+
+                <h2>Comments & Remarks History</h2>
+                <div style="padding-left: 5px;">
+                    ${commentsHtml}
+                </div>
+
+                <div class="footer">
+                    TEAM Engineering CRM System &copy; ${new Date().getFullYear()} - All Rights Reserved
+                </div>
+
+                <script>
+                    // Auto-open print dialog when loaded
+                    window.onload = function() {
+                        setTimeout(() => {
+                            window.print();
+                        }, 300);
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    } catch (e) {
+        showToast('Failed to load specifications for printing', 'error');
+    }
+}
+

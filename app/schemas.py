@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 class ClientBase(BaseModel):
@@ -62,8 +62,8 @@ class OrderBase(BaseModel):
     expected_delivery_date: Optional[str] = ""
     performance_bond_guarantee: Optional[str] = ""
     payment_method: Optional[str] = ""
-    payment_status: Optional[str] = ""
-    order_status: Optional[str] = "Under Production"
+    payment_status: Optional[str] = "Under Payment"
+    order_status: Optional[str] = "Under Approval"
     source_sheet: Optional[str] = "Orders"
 
 class OrderCreate(OrderBase):
@@ -132,6 +132,21 @@ class CategoryStats(BaseModel):
     count: int = 0
     values: ValueBreakdown = ValueBreakdown()
 
+class CategoryDetailItem(BaseModel):
+    name: str
+    count: int = 0
+    percentage: float = 0.0
+    usd_value: float = 0.0
+    eur_value: float = 0.0
+
+class CategoryDetailView(BaseModel):
+    category_name: str
+    total_count: int = 0
+    total_usd: float = 0.0
+    total_eur: float = 0.0
+    principal_breakdown: List[CategoryDetailItem] = []
+    monthly_frequency: Dict[str, int] = {}
+
 class AnnualReportData(BaseModel):
     year: str
     # 1) Dashboard: overall view
@@ -152,6 +167,7 @@ class AnnualReportData(BaseModel):
     
     # 2) Distribution for Pie Chart
     chart_distribution: dict
+    category_views: Optional[Dict[str, CategoryDetailView]] = None
 
 # --- BUSINESS INTELLIGENCE & ANALYTICS SCHEMAS ---
 

@@ -49,6 +49,16 @@ def init_db_and_import():
     else:
         print("Database crm.db found. Skipping import.")
 
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "192.168.1.42"
+
 def open_browser(port):
     time.sleep(1.5)
     url = f"http://127.0.0.1:{port}"
@@ -66,11 +76,19 @@ if __name__ == "__main__":
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.bind(("127.0.0.1", port))
+                s.bind(("0.0.0.0", port))
                 break
             except OSError:
                 print(f"Port {port} is already in use. Trying port {port + 1}...")
                 port += 1
+    
+    local_ip = get_local_ip()
+    print("\n" + "=" * 60)
+    print("         TEAM Engineering CRM Server is Ready!")
+    print("=" * 60)
+    print(f" Local access (This PC):    http://localhost:{port}")
+    print(f" Network access (Other PCs): http://{local_ip}:{port}")
+    print("=" * 60 + "\n")
     
     # Start web browser in a separate thread
     threading.Thread(target=open_browser, args=(port,), daemon=True).start()
@@ -78,4 +96,5 @@ if __name__ == "__main__":
     # Launch FastAPI Server
     import uvicorn
     print("Starting CRM Server. Press Ctrl+C to stop...")
-    uvicorn.run("app.main:app", host="127.0.0.1", port=port, reload=False)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
+

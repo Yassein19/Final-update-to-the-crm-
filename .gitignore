@@ -1,0 +1,18 @@
+# Python byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment files
+.env
+
+# SQLite Database
+crm.db
+*.db
+*.sqlite
+
+# OS and IDE temporary files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

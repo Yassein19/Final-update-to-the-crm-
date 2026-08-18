@@ -48,7 +48,7 @@ def get_company_report(
     client_id: Optional[int] = None,  # Backward compatibility
     db: Session = Depends(get_db)
 ):
-    target_type = company_type.lower()
+    target_type = (company_type or "client").lower()
     target_id = company_id or client_id
     
     entity = None
@@ -184,11 +184,34 @@ def get_sales_dashboard(db: Session = Depends(get_db)):
                 res.append(item)
         return res
 
+    def filter_won_by_date(items, start_date, end_date=None):
+        res = []
+        for item in items:
+            if item.status in ("Won", "Order"):
+                ord_date = item.order.order_date if item.order else None
+                dt = parse_date(ord_date) if ord_date else parse_date(item.inquiry_date)
+                if dt and dt >= start_date:
+                    if end_date and dt > end_date:
+                        continue
+                    res.append(item)
+        return res
+
+    def filter_lost_declined_by_date(items, start_date, status, end_date=None):
+        res = []
+        for item in items:
+            if item.status == status:
+                dt = parse_date(item.last_update or item.inquiry_date)
+                if dt and dt >= start_date:
+                    if end_date and dt > end_date:
+                        continue
+                    res.append(item)
+        return res
+
     # Daily analytics
     d_new = filter_by_date(all_inqs, today, attr="inquiry_date")
-    d_won = [i for i in filter_by_date(all_inqs, today, attr="last_update") if i.status in ("Won", "Order")]
-    d_lost = [i for i in filter_by_date(all_inqs, today, attr="last_update") if i.status == "Lost"]
-    d_declined = [i for i in filter_by_date(all_inqs, today, attr="last_update") if i.status == "Declined"]
+    d_won = filter_won_by_date(all_inqs, today)
+    d_lost = filter_lost_declined_by_date(all_inqs, today, "Lost")
+    d_declined = filter_lost_declined_by_date(all_inqs, today, "Declined")
     
     daily_stats = {
         "new_inquiries": len(d_new),
@@ -201,7 +224,7 @@ def get_sales_dashboard(db: Session = Depends(get_db)):
 
     # Weekly analytics
     w_inqs = filter_by_date(all_inqs, week_start, attr="inquiry_date")
-    w_won = [i for i in filter_by_date(all_inqs, week_start, attr="last_update") if i.status in ("Won", "Order")]
+    w_won = filter_won_by_date(all_inqs, week_start)
 
     weekly_stats = {
         "weekly_inquiries": len(w_inqs),
@@ -212,8 +235,8 @@ def get_sales_dashboard(db: Session = Depends(get_db)):
     m_inqs = filter_by_date(all_inqs, month_start, attr="inquiry_date")
     y_inqs = filter_by_date(all_inqs, year_start, attr="inquiry_date")
 
-    m_won = [i for i in filter_by_date(all_inqs, month_start, attr="last_update") if i.status in ("Won", "Order")]
-    y_won = [i for i in filter_by_date(all_inqs, year_start, attr="last_update") if i.status in ("Won", "Order")]
+    m_won = filter_won_by_date(all_inqs, month_start)
+    y_won = filter_won_by_date(all_inqs, year_start)
 
     monthly_stats = {
         "inquiries_count": len(m_inqs),
@@ -252,14 +275,15 @@ def get_time_series(period: str = Query("Monthly", description="Daily, Weekly, M
         if not dt:
             continue
             
-        if period.lower() == "monthly":
+        p = (period or "Monthly").lower()
+        if p == "monthly":
             label = dt.strftime("%b %Y")
             sort_key = dt.strftime("%Y-%m")
-        elif period.lower() == "quarterly":
+        elif p == "quarterly":
             q = (dt.month - 1) // 3 + 1
             label = f"Q{q} {dt.year}"
             sort_key = f"{dt.year}-Q{q}"
-        elif period.lower() == "yearly":
+        elif p == "yearly":
             label = str(dt.year)
             sort_key = str(dt.year)
         else: # Weekly / Daily
@@ -304,7 +328,7 @@ def get_time_series(period: str = Query("Monthly", description="Daily, Weekly, M
         sales_cycles.append(avg_c)
 
     return TimeSeriesData(
-        period_type=period,
+        period_type=period or "Monthly",
         labels=labels,
         inquiries_count=inqs_cnt,
         won_orders_count=won_cnt,
@@ -319,19 +343,20 @@ def get_comparison(period: str = Query("Monthly", description="Daily, Weekly, Mo
     all_inqs = db.query(Inquiry).filter(Inquiry.is_deleted == False).all()
     today = datetime.now().date()
 
-    if period.lower() == "daily":
+    p = (period or "Monthly").lower()
+    if p == "daily":
         curr_start = today
         prev_start = today - timedelta(days=1)
         prev_end = prev_start
         curr_label = "Today"
         prev_label = "Yesterday"
-    elif period.lower() == "weekly":
+    elif p == "weekly":
         curr_start = today - timedelta(days=7)
         prev_start = curr_start - timedelta(days=7)
         prev_end = curr_start - timedelta(days=1)
         curr_label = "This Week"
         prev_label = "Last Week"
-    elif period.lower() == "yearly":
+    elif p == "yearly":
         curr_start = today.replace(month=1, day=1)
         prev_start = today.replace(year=today.year - 1, month=1, day=1)
         prev_end = today.replace(year=today.year - 1, month=12, day=31)
@@ -396,7 +421,7 @@ def get_comparison(period: str = Query("Monthly", description="Daily, Weekly, Mo
     )
 
     return ComparisonAnalyticsData(
-        period=period,
+        period=period or "Monthly",
         current_label=curr_label,
         previous_label=prev_label,
         metrics=comparison_dict,

@@ -1,6 +1,6 @@
 # TEAM Engineering CRM
 
-A professional, self-contained **Sales Pipeline CRM** built for TEAM Engineering to manage engineering inquiries, track commercial outcomes, and synchronise all data back to the existing `STATUS 2025-2026 (1).xlsx` Excel file.
+A professional, self-contained **Sales Pipeline CRM** built for TEAM Engineering to manage engineering inquiries, track commercial outcomes, and synchronise all data back to the existing `STATUS 2025-2026.xlsx` Excel file.
 
 ---
 
@@ -46,7 +46,7 @@ The CRM matches your sales funnel stages:
 ---
 
 ### 5. Syncing Data with Excel
-The CRM works hand-in-hand with your existing `STATUS 2025-2026 (1).xlsx` spreadsheet:
+The CRM works hand-in-hand with your existing `STATUS 2025-2026.xlsx` spreadsheet:
 - **Auto-Import:** The first time you launch, the CRM imports all columns and rows from your existing Excel sheet.
 - **Sync back to Excel:** After editing, adding comments, or moving items in the CRM, click the **`Sync to Excel`** button at the top-right of the dashboard. This writes the live CRM database back to the spreadsheet, preserving all formatting and formulas.
 
@@ -108,7 +108,7 @@ CRM-Workspace/
 ├── run.py                      # Python startup launcher
 ├── run.bat                     # Windows shortcut launcher
 ├── requirements.txt            # Python dependencies
-└── STATUS 2025-2026 (1).xlsx   # The master Excel file
+└── STATUS 2025-2026.xlsx   # The master Excel file
 ```
 
 ---

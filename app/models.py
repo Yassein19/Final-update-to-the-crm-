@@ -69,8 +69,8 @@ class Order(Base):
     expected_delivery_date = Column(String, nullable=True)
     performance_bond_guarantee = Column(String, nullable=True)
     payment_method = Column(String, nullable=True)
-    payment_status = Column(String, nullable=True)
-    order_status = Column(String, nullable=False, default="Under Production") # Under Production, Shipped, Paid, Due payment, Cancelled
+    payment_status = Column(String, nullable=True, default="Under Payment") # Payment Submitted, Paid, Under Payment
+    order_status = Column(String, nullable=False, default="Under Approval") # Under Approval, Under Production, Under Shipping, Shipped, Under Payment
     source_sheet = Column(String, nullable=False, default="Orders") # Orders, LESER's Orders, etc.
 
     # Relationships

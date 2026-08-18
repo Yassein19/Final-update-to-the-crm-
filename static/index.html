@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,11 +8,13 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <!-- Chart.js and Lucide Icons via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar Navigation -->
@@ -66,7 +69,9 @@
             <header class="top-bar">
                 <div class="header-search">
                     <i data-lucide="search" class="search-icon"></i>
-                    <input type="text" id="global-search" placeholder="Search across orders, client reference, contact person..." oninput="onGlobalSearch(this.value)">
+                    <input type="text" id="global-search"
+                        placeholder="Search across orders, client reference, contact person..."
+                        oninput="onGlobalSearch(this.value)">
                 </div>
                 <div class="header-profile">
                     <div class="stat-badge">
@@ -134,10 +139,10 @@
                             <canvas id="pipelineChart"></canvas>
                         </div>
                     </div>
-                    
+
                     <div class="dashboard-alerts card">
                         <h3>Critical Action Alerts</h3>
-                        
+
                         <div class="alert-section">
                             <h4>⚠️ Inquiries Due This Week</h4>
                             <div class="alert-list" id="alerts-due-week">
@@ -236,6 +241,26 @@
                             <option value=" Bartec Orders 2025">Bartec Orders 2025</option>
                         </select>
                     </div>
+                    <div class="filter-group">
+                        <label>Order Status:</label>
+                        <select id="order-filter-status" onchange="loadOrders()">
+                            <option value="">All Statuses</option>
+                            <option value="Under Approval">Under Approval</option>
+                            <option value="Under Production">Under Production</option>
+                            <option value="Under Shipping">Under Shipping</option>
+                            <option value="Shipped">Shipped</option>
+                            <option value="Under Payment">Under Payment</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Payment Status:</label>
+                        <select id="order-filter-payment-status" onchange="loadOrders()">
+                            <option value="">All Payment Statuses</option>
+                            <option value="Payment Submitted">Payment Submitted</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Under Payment">Under Payment</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Data Table -->
@@ -250,9 +275,9 @@
                                 <th>Expected Delivery</th>
                                 <th>Total Order Value</th>
                                 <th>Order Status</th>
-                                <th>Payment Status</th>
-                                <th>Perf. Bond</th>
-                                <th class="no-print">Actions</th>
+                                <th class="col-compact">Payment Status</th>
+                                <th class="col-compact">Perf. Bond</th>
+                                <th class="no-print col-compact">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="orders-list">
@@ -267,7 +292,8 @@
                 <div class="section-header flex-between">
                     <div>
                         <h1>Annual Report Summary</h1>
-                        <p class="subtitle">Comprehensive overall view of inquiries, tenders, submitted offers, and order outcomes.</p>
+                        <p class="subtitle">Comprehensive overall view of inquiries, tenders, submitted offers, and
+                            order outcomes.</p>
                     </div>
                     <div class="btn-group no-print">
                         <select id="report-year-select" class="form-select" onchange="loadAnnualReport()">
@@ -283,11 +309,12 @@
                             <button class="btn btn-primary" onclick="toggleExportMenu(event, 'export-menu-reports')">
                                 <i data-lucide="download"></i> Save / Export <i data-lucide="chevron-down"></i>
                             </button>
-                            <div id="export-menu-reports" class="export-menu-card" style="display:none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; z-index: 100; min-width: 190px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; box-shadow: var(--shadow-lg);">
-                                <button class="export-menu-btn" onclick="exportReportToWord('tab-reports')">
+                            <div id="export-menu-reports" class="export-menu-card"
+                                style="display:none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; z-index: 100; min-width: 190px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; box-shadow: var(--shadow-lg);">
+                                <button class="export-menu-btn" onclick="exportReportToWord('tab-report')">
                                     <i data-lucide="file-text"></i> Save as Word (.docx)
                                 </button>
-                                <button class="export-menu-btn" onclick="exportReportToExcel('tab-reports')">
+                                <button class="export-menu-btn" onclick="exportReportToExcel('tab-report')">
                                     <i data-lucide="sheet"></i> Save as Excel (.xlsx)
                                 </button>
                                 <button class="export-menu-btn" onclick="exportReportToPDF()">
@@ -301,7 +328,7 @@
                 <!-- Printable Report View -->
                 <div class="printable-report">
                     <h2 class="report-section-title">1) Dashboard: Overall View (No. & Values)</h2>
-                    
+
                     <!-- Section 1: Inquiries / Tenders -->
                     <div class="report-block card">
                         <h3>Inquiries & Tenders</h3>
@@ -309,14 +336,14 @@
                             <table class="report-table">
                                 <thead>
                                     <tr>
-                                        <th>Metric Category</th>
+                                        <th>Category</th>
                                         <th>Count (No.)</th>
                                         <th>USD Value ($)</th>
                                         <th>EUR Value (€)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="switchReportCategory('Inquiries')" title="Click to view Inquiries breakdown in Section 2">
                                         <td>Total Tenders Received</td>
                                         <td id="rpt-tenders-count">0</td>
                                         <td id="rpt-tenders-usd">$0.00</td>
@@ -328,19 +355,19 @@
                                         <td id="rpt-canc-usd">$0.00</td>
                                         <td id="rpt-canc-eur">€0.00</td>
                                     </tr>
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="switchReportCategory('Declined')" title="Click to view Declined breakdown in Section 2">
                                         <td>Declined Tenders</td>
                                         <td id="rpt-decl-count">0</td>
                                         <td id="rpt-decl-usd">$0.00</td>
                                         <td id="rpt-decl-eur">€0.00</td>
                                     </tr>
-                                    <tr class="table-row-highlight">
+                                    <tr class="table-row-highlight" style="cursor: pointer;" onclick="switchReportCategory('Inquiries')" title="Click to view Firm Inquiries breakdown in Section 2">
                                         <td>Firm Offers</td>
                                         <td id="rpt-firm-count">0</td>
                                         <td id="rpt-firm-usd">$0.00</td>
                                         <td id="rpt-firm-eur">€0.00</td>
                                     </tr>
-                                    <tr class="table-row-highlight">
+                                    <tr class="table-row-highlight" style="cursor: pointer;" onclick="switchReportCategory('Budgetary')" title="Click to view Budgetary breakdown in Section 2">
                                         <td>Budgetary Offers</td>
                                         <td id="rpt-budg-count">0</td>
                                         <td id="rpt-budg-usd">$0.00</td>
@@ -358,26 +385,26 @@
                             <table class="report-table">
                                 <thead>
                                     <tr>
-                                        <th>Outcome Stage</th>
+                                        <th>Offer Status</th>
                                         <th>Count (No.)</th>
                                         <th>USD Value ($)</th>
                                         <th>EUR Value (€)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="switchReportCategory('Ongoing Offers')" title="Click to view Ongoing Offers breakdown in Section 2">
                                         <td>Ongoing / Active Offers</td>
                                         <td id="rpt-ong-count">0</td>
                                         <td id="rpt-ong-usd">$0.00</td>
                                         <td id="rpt-ong-eur">€0.00</td>
                                     </tr>
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="switchReportCategory('Orders')" title="Click to view Orders breakdown in Section 2">
                                         <td>Awarded (Orders)</td>
                                         <td id="rpt-award-count">0</td>
                                         <td id="rpt-award-usd">$0.00</td>
                                         <td id="rpt-award-eur">€0.00</td>
                                     </tr>
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="switchReportCategory('Lost Offers')" title="Click to view Lost Offers breakdown in Section 2">
                                         <td>Lost Offers</td>
                                         <td id="rpt-lost-count">0</td>
                                         <td id="rpt-lost-usd">$0.00</td>
@@ -402,25 +429,25 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="switchReportCategory('Orders')" title="Click to view Orders breakdown in Section 2">
                                         <td>Under Production</td>
                                         <td id="rpt-ord-prod-count">0</td>
                                         <td id="rpt-ord-prod-usd">$0.00</td>
                                         <td id="rpt-ord-prod-eur">€0.00</td>
                                     </tr>
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="switchReportCategory('Orders')" title="Click to view Orders breakdown in Section 2">
                                         <td>Shipped Orders</td>
                                         <td id="rpt-ord-ship-count">0</td>
                                         <td id="rpt-ord-ship-usd">$0.00</td>
                                         <td id="rpt-ord-ship-eur">€0.00</td>
                                     </tr>
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="switchReportCategory('Orders')" title="Click to view Orders breakdown in Section 2">
                                         <td>Fully Paid</td>
                                         <td id="rpt-ord-paid-count">0</td>
                                         <td id="rpt-ord-paid-usd">$0.00</td>
                                         <td id="rpt-ord-paid-eur">€0.00</td>
                                     </tr>
-                                    <tr>
+                                    <tr style="cursor: pointer;" onclick="switchReportCategory('Orders')" title="Click to view Orders breakdown in Section 2">
                                         <td>Due Payment / CAD Pending</td>
                                         <td id="rpt-ord-due-count">0</td>
                                         <td id="rpt-ord-due-usd">$0.00</td>
@@ -431,10 +458,117 @@
                         </div>
                     </div>
 
-                    <h2 class="report-section-title mt-6">2) Detailed Overview & Pipeline Distribution</h2>
-                    <div class="report-chart-box card">
-                        <div class="chart-container" style="height: 340px;">
-                            <canvas id="annualReportChart"></canvas>
+                    <h2 class="report-section-title mt-6">2) Detailed Overview & Category Analysis</h2>
+                    <p class="subtitle" style="margin-top: -0.5rem; margin-bottom: 1.25rem;">
+                        Explore graphical insights, monthly frequency histograms, and summary tables across all offer
+                        status categories.
+                    </p>
+
+                    <!-- Category Switcher Ribbon -->
+                    <div class="filter-ribbon"
+                        style="margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <button class="btn btn-primary category-tab active" id="cat-tab-Inquiries" data-category="Inquiries"
+                            onclick="switchReportCategory('Inquiries')">Inquiries</button>
+                        <button class="btn btn-secondary category-tab" id="cat-tab-Declined" data-category="Declined"
+                            onclick="switchReportCategory('Declined')">Declined</button>
+                        <button class="btn btn-secondary category-tab" id="cat-tab-Lost-Offers" data-category="Lost Offers"
+                            onclick="switchReportCategory('Lost Offers')">Lost Offers</button>
+                        <button class="btn btn-secondary category-tab" id="cat-tab-Budgetary" data-category="Budgetary"
+                            onclick="switchReportCategory('Budgetary')">Budgetary</button>
+                        <button class="btn btn-secondary category-tab" id="cat-tab-Ongoing-Offers" data-category="Ongoing Offers"
+                            onclick="switchReportCategory('Ongoing Offers')">Ongoing Offers</button>
+                        <button class="btn btn-secondary category-tab" id="cat-tab-Orders" data-category="Orders"
+                            onclick="switchReportCategory('Orders')">Orders</button>
+                    </div>
+
+                    <!-- Category Detail View Box -->
+                    <div class="card p-5" id="category-detail-container">
+                        <!-- Stat Summary Header -->
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <h3 id="cat-view-title"
+                                    style="margin: 0; font-size: 1.25rem; color: var(--text-main); font-weight: 700;">
+                                    Inquiries Category Overview</h3>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">Tabular breakdown &
+                                    graphical analysis</span>
+                            </div>
+                            <div style="display: flex; gap: 1.5rem;">
+                                <div><span
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Total
+                                        Count</span>
+                                    <div id="cat-stat-count"
+                                        style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">0</div>
+                                </div>
+                                <div><span
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">USD
+                                        Value ($)</span>
+                                    <div id="cat-stat-usd"
+                                        style="font-size: 1.25rem; font-weight: 700; color: #10b981;">$0.00</div>
+                                </div>
+                                <div><span
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">EUR
+                                        Value (€)</span>
+                                    <div id="cat-stat-eur"
+                                        style="font-size: 1.25rem; font-weight: 700; color: #60a5fa;">€0.00</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Data Visualization Charts Grid -->
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                            <!-- Chart 1: Distribution Analysis (Pie Chart) -->
+                            <div class="report-chart-box card p-4" style="background: var(--bg-hover);">
+                                <h4
+                                    style="font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-muted); text-transform: uppercase;">
+                                    Principal Distribution Share (%)</h4>
+                                <div class="chart-container" style="height: 260px;">
+                                    <canvas id="catPieChart"></canvas>
+                                </div>
+                            </div>
+                            <!-- Chart 2: Principal Comparison (Bar Chart) -->
+                            <div class="report-chart-box card p-4" style="background: var(--bg-hover);">
+                                <h4
+                                    style="font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-muted); text-transform: uppercase;">
+                                    Record Count & Value Comparison</h4>
+                                <div class="chart-container" style="height: 260px;">
+                                    <canvas id="catBarChart"></canvas>
+                                </div>
+                            </div>
+                            <!-- Chart 3: Monthly Frequency Histogram -->
+                            <div class="report-chart-box card p-4"
+                                style="background: var(--bg-hover); grid-column: span 1 / -1;">
+                                <h4
+                                    style="font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-muted); text-transform: uppercase;">
+                                    Monthly Frequency Distribution (Histogram)</h4>
+                                <div class="chart-container" style="height: 240px;">
+                                    <canvas id="catHistogramChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Table -->
+                        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">Category Summary Table
+                        </h4>
+                        <div class="report-table-wrapper">
+                            <table class="report-table" id="cat-summary-table">
+                                <thead>
+                                    <tr>
+                                        <th>Principal / Category</th>
+                                        <th>Count (No.)</th>
+                                        <th>Percentage (%)</th>
+                                        <th>USD Value ($)</th>
+                                        <th>EUR Value (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cat-summary-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                                <tfoot id="cat-summary-tfoot">
+                                    <!-- Populated dynamically -->
+                                </tfoot>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -445,15 +579,18 @@
                 <div class="section-header flex-between">
                     <div>
                         <h1>Business Intelligence & Sales Analytics</h1>
-                        <p class="subtitle">Executive summaries, performance insights, customer intelligence, and trend analytics.</p>
+                        <p class="subtitle">Executive summaries, performance insights, customer intelligence, and trend
+                            analytics.</p>
                     </div>
                     <div class="btn-group no-print">
-                        <button class="btn btn-secondary" onclick="window.print()"><i data-lucide="printer"></i> Print Report</button>
+                        <button class="btn btn-secondary" onclick="window.print()"><i data-lucide="printer"></i> Print
+                            Report</button>
                         <div class="export-dropdown" style="position: relative; display: inline-block;">
                             <button class="btn btn-primary" onclick="toggleExportMenu(event, 'export-menu-bi')">
                                 <i data-lucide="download"></i> Save / Export <i data-lucide="chevron-down"></i>
                             </button>
-                            <div id="export-menu-bi" class="export-menu-card" style="display:none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; z-index: 100; min-width: 190px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; box-shadow: var(--shadow-lg);">
+                            <div id="export-menu-bi" class="export-menu-card"
+                                style="display:none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; z-index: 100; min-width: 190px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; box-shadow: var(--shadow-lg);">
                                 <button class="export-menu-btn" onclick="exportReportToWord('tab-analytics')">
                                     <i data-lucide="file-text"></i> Save as Word (.docx)
                                 </button>
@@ -470,10 +607,15 @@
 
                 <!-- Sub Navigation Ribbon -->
                 <div class="filter-ribbon" style="margin-bottom: 1.5rem;">
-                    <button class="btn btn-secondary bi-subtab active" id="bi-tab-sales" onclick="switchBITab('sales')"><i data-lucide="layout-grid"></i> Sales Analytics</button>
-                    <button class="btn btn-secondary bi-subtab" id="bi-tab-company" onclick="switchBITab('company')"><i data-lucide="building-2"></i> Company Intelligence</button>
-                    <button class="btn btn-secondary bi-subtab" id="bi-tab-series" onclick="switchBITab('series')"><i data-lucide="line-chart"></i> Time Series Trends</button>
-                    <button class="btn btn-secondary bi-subtab" id="bi-tab-comparison" onclick="switchBITab('comparison')"><i data-lucide="git-compare"></i> Period Comparisons</button>
+                    <button class="btn btn-secondary bi-subtab active" id="bi-tab-sales"
+                        onclick="switchBITab('sales')"><i data-lucide="layout-grid"></i> Sales Analytics</button>
+                    <button class="btn btn-secondary bi-subtab" id="bi-tab-company" onclick="switchBITab('company')"><i
+                            data-lucide="building-2"></i> Company Intelligence</button>
+                    <button class="btn btn-secondary bi-subtab" id="bi-tab-series" onclick="switchBITab('series')"><i
+                            data-lucide="line-chart"></i> Time Series Trends</button>
+                    <button class="btn btn-secondary bi-subtab" id="bi-tab-comparison"
+                        onclick="switchBITab('comparison')"><i data-lucide="git-compare"></i> Period
+                        Comparisons</button>
                 </div>
 
                 <!-- BI View 1: Sales Analytics Dashboard -->
@@ -502,7 +644,8 @@
                     </div>
 
                     <div class="card mt-4">
-                        <h3><i data-lucide="sparkles" style="color: var(--accent-light);"></i> Executive Daily & Weekly Business Insights</h3>
+                        <h3><i data-lucide="sparkles" style="color: var(--accent-light);"></i> Executive Daily & Weekly
+                            Business Insights</h3>
                         <div id="bi-sales-insights" class="mt-2" style="line-height: 1.6; color: var(--text-muted);">
                             <!-- Populated dynamically -->
                         </div>
@@ -527,9 +670,12 @@
                         </div>
                     </div>
 
-                    <div class="card mb-4" style="background: rgba(59, 130, 246, 0.08); border-left: 4px solid var(--accent-light);">
-                        <h4 style="color: var(--accent-light);"><i data-lucide="bot"></i> AI Executive Intelligence Summary</h4>
-                        <p id="bi-company-ai-summary" class="mt-2" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main);">-</p>
+                    <div class="card mb-4"
+                        style="background: rgba(59, 130, 246, 0.08); border-left: 4px solid var(--accent-light);">
+                        <h4 style="color: var(--accent-light);"><i data-lucide="bot"></i> AI Executive Intelligence
+                            Summary</h4>
+                        <p id="bi-company-ai-summary" class="mt-2"
+                            style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main);">-</p>
                     </div>
 
                     <div class="grid-4 gap-4 mb-4">
@@ -632,7 +778,8 @@
                                 </select>
                             </div>
                         </div>
-                        <p id="bi-comparison-explanation" class="mt-2" style="color: var(--text-muted); font-size: 0.95rem;">-</p>
+                        <p id="bi-comparison-explanation" class="mt-2"
+                            style="color: var(--text-muted); font-size: 0.95rem;">-</p>
                     </div>
 
                     <div class="card">
@@ -672,7 +819,8 @@
             <div id="tab-trash" class="content-section">
                 <div class="section-header">
                     <h1>Trash Bin</h1>
-                    <p class="subtitle">Recover soft-deleted inquiries. Deleted items are hidden from the primary pipeline.</p>
+                    <p class="subtitle">Recover soft-deleted inquiries. Deleted items are hidden from the primary
+                        pipeline.</p>
                 </div>
 
                 <div class="table-container card">
@@ -722,12 +870,14 @@
                         </div>
                         <div class="form-group">
                             <label class="required">Principal Name</label>
-                            <input type="text" id="inq-principal" placeholder="e.g. Bartec" required list="principal-list-dl">
+                            <input type="text" id="inq-principal" placeholder="e.g. Bartec" required
+                                list="principal-list-dl">
                             <datalist id="principal-list-dl"></datalist>
                         </div>
                         <div class="form-group col-span-2">
                             <label class="required">Inquiry Reference / Project Details</label>
-                            <textarea id="inq-ref" placeholder="Project details or tender details..." rows="2" required></textarea>
+                            <textarea id="inq-ref" placeholder="Project details or tender details..." rows="2"
+                                required></textarea>
                         </div>
                         <div class="form-group">
                             <label>Quotation Reference</label>
@@ -782,7 +932,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-inquiry')">Cancel</button>
+                        <button type="button" class="btn btn-secondary"
+                            onclick="closeModal('modal-inquiry')">Cancel</button>
                         <button type="submit" class="btn btn-primary">Save Inquiry</button>
                     </div>
                 </form>
@@ -795,7 +946,12 @@
             <div class="modal-header">
                 <h3>Inquiry Detail & Remarks Timeline</h3>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleFullscreenModal('modal-details-card')" id="btn-toggle-fullscreen">
+                    <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="printInquiry(activeInquiryIdForComments)" id="btn-print-detail">
+                        <i data-lucide="printer"></i> Print Spec & Timeline
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="toggleFullscreenModal('modal-details-card')" id="btn-toggle-fullscreen">
                         <i data-lucide="maximize-2"></i> Fullscreen
                     </button>
                     <button class="modal-close" onclick="closeModal('modal-details')">&times;</button>
@@ -820,7 +976,10 @@
                             <div><strong>Validity:</strong> <span id="detail-validity">-</span></div>
                             <div><strong>Expiration:</strong> <span id="detail-expire">-</span></div>
                             <div><strong>Contact:</strong> <span id="detail-contact">-</span></div>
-                            <div><strong>Stage Status:</strong> <span id="detail-status" class="status-badge">-</span></div>
+                            <div><strong>Stage Status:</strong> <span id="detail-status" class="status-badge">-</span>
+                            </div>
+                            <div><strong>Order Status:</strong> <span id="detail-order-status">-</span></div>
+                            <div><strong>Payment Status:</strong> <span id="detail-payment-status">-</span></div>
                         </div>
                         <div class="mt-4">
                             <strong>Inquiry Reference:</strong>
@@ -839,8 +998,10 @@
                             <!-- Populated dynamically -->
                         </div>
                         <div class="comment-input-box">
-                            <textarea id="new-comment-text" placeholder="Add a new update or progress note..." rows="2"></textarea>
-                            <button class="btn btn-primary btn-sm mt-2" onclick="submitNewComment()">Add Comment</button>
+                            <textarea id="new-comment-text" placeholder="Add a new update or progress note..."
+                                rows="2"></textarea>
+                            <button class="btn btn-primary btn-sm mt-2" onclick="submitNewComment()">Add
+                                Comment</button>
                         </div>
                     </div>
                 </div>
@@ -889,20 +1050,19 @@
                         <div class="form-group">
                             <label>Order Status</label>
                             <select id="ord-status">
+                                <option value="Under Approval">Under Approval</option>
                                 <option value="Under Production">Under Production</option>
+                                <option value="Under Shipping">Under Shipping</option>
                                 <option value="Shipped">Shipped</option>
-                                <option value="Paid">Paid</option>
-                                <option value="Due Payment">Due Payment</option>
-                                <option value="Cancelled">Cancelled</option>
+                                <option value="Under Payment">Under Payment</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Payment Status</label>
                             <select id="ord-payment-status">
-                                <option value="Order ready">Order ready</option>
+                                <option value="Payment Submitted">Payment Submitted</option>
                                 <option value="Paid">Paid</option>
-                                <option value="90% CAD paid">90% CAD paid</option>
-                                <option value="Order Supplied&#10;Paid">Order Supplied / Paid</option>
+                                <option value="Under Payment">Under Payment</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -936,7 +1096,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-order-transition')">Cancel</button>
+                        <button type="button" class="btn btn-secondary"
+                            onclick="closeModal('modal-order-transition')">Cancel</button>
                         <button type="submit" class="btn btn-success">Save Order Specs</button>
                     </div>
                 </form>
@@ -949,4 +1110,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>
