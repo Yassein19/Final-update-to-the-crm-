@@ -208,6 +208,9 @@ async function loadInquiries() {
         const statusFilter = document.getElementById('inquiry-filter-status').value;
         const clientFilter = document.getElementById('inquiry-filter-client').value;
         const principalFilter = document.getElementById('inquiry-filter-principal').value;
+        const dateField = document.getElementById('inquiry-filter-date-field')?.value || 'inquiry_date';
+        const dateFrom = document.getElementById('inquiry-filter-date-from')?.value;
+        const dateTo = document.getElementById('inquiry-filter-date-to')?.value;
 
         let url = '/api/inquiries?';
         if (statusFilter) url += `status=${statusFilter}&`;
@@ -219,6 +222,32 @@ async function loadInquiries() {
 
         if (clientFilter) inquiries = inquiries.filter(i => i.client?.name === clientFilter);
         if (principalFilter) inquiries = inquiries.filter(i => i.principal?.name === principalFilter);
+
+        // Date range filtering
+        if (dateFrom || dateTo) {
+            inquiries = inquiries.filter(inq => {
+                const rawDate = inq[dateField];
+                if (!rawDate) return false;
+                const dStr = String(rawDate).trim().substring(0, 10);
+                if (dateFrom && dStr < dateFrom) return false;
+                if (dateTo && dStr > dateTo) return false;
+                return true;
+            });
+        }
+
+        // Sort inquiries by inquiry_date DESC (empty dates at the tail)
+        inquiries.sort((a, b) => {
+            const dateA = a.inquiry_date ? String(a.inquiry_date).trim() : '';
+            const dateB = b.inquiry_date ? String(b.inquiry_date).trim() : '';
+
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+
+            if (dateA > dateB) return -1;
+            if (dateA < dateB) return 1;
+            return 0;
+        });
 
         const inquiriesList = document.getElementById('inquiries-list');
         if (inquiries.length === 0) {
@@ -259,6 +288,14 @@ async function loadInquiries() {
     }
 }
 
+function clearInquiryDateFilters() {
+    const fromInput = document.getElementById('inquiry-filter-date-from');
+    const toInput = document.getElementById('inquiry-filter-date-to');
+    if (fromInput) fromInput.value = '';
+    if (toInput) toInput.value = '';
+    loadInquiries();
+}
+
 function populateFilters(data) {
     const clientSelect = document.getElementById('inquiry-filter-client');
     const principalSelect = document.getElementById('inquiry-filter-principal');
@@ -291,6 +328,19 @@ async function onGlobalSearch(query) {
         const searchResults = await res.json();
 
         if (activeTab === 'inquiries') {
+            searchResults.sort((a, b) => {
+                const dateA = a.inquiry_date ? String(a.inquiry_date).trim() : '';
+                const dateB = b.inquiry_date ? String(b.inquiry_date).trim() : '';
+
+                if (!dateA && !dateB) return 0;
+                if (!dateA) return 1;
+                if (!dateB) return -1;
+
+                if (dateA > dateB) return -1;
+                if (dateA < dateB) return 1;
+                return 0;
+            });
+
             const list = document.getElementById('inquiries-list');
             if (searchResults.length === 0) {
                 list.innerHTML = `<tr><td colspan="11" class="empty-alert">No search results matching your query.</td></tr>`;
@@ -326,6 +376,19 @@ async function onGlobalSearch(query) {
             `).join('');
         } else if (activeTab === 'orders') {
             const orders = searchResults.filter(inq => (inq.status === 'Won' || inq.status === 'Order') && inq.order);
+            orders.sort((a, b) => {
+                const dateA = (a.order && a.order.order_date) ? String(a.order.order_date).trim() : '';
+                const dateB = (b.order && b.order.order_date) ? String(b.order.order_date).trim() : '';
+
+                if (!dateA && !dateB) return 0;
+                if (!dateA) return 1;
+                if (!dateB) return -1;
+
+                if (dateA > dateB) return -1;
+                if (dateA < dateB) return 1;
+                return 0;
+            });
+
             const list = document.getElementById('orders-list');
             if (orders.length === 0) {
                 list.innerHTML = `<tr><td colspan="10" class="empty-alert">No orders found matching search criteria.</td></tr>`;
@@ -398,6 +461,10 @@ async function loadOrders() {
         const sheetFilter = document.getElementById('order-filter-sheet')?.value;
         const statusFilter = document.getElementById('order-filter-status')?.value;
         const payStatusFilter = document.getElementById('order-filter-payment-status')?.value;
+        const dateField = document.getElementById('order-filter-date-field')?.value || 'order_date';
+        const dateFrom = document.getElementById('order-filter-date-from')?.value;
+        const dateTo = document.getElementById('order-filter-date-to')?.value;
+
         const res = await fetch('/api/inquiries?status=Order');
         let wonInquiries = await res.json();
 
@@ -410,6 +477,32 @@ async function loadOrders() {
         if (payStatusFilter) {
             wonInquiries = wonInquiries.filter(inq => inq.order?.payment_status === payStatusFilter);
         }
+
+        // Date range filtering
+        if (dateFrom || dateTo) {
+            wonInquiries = wonInquiries.filter(inq => {
+                const rawDate = inq.order ? inq.order[dateField] : null;
+                if (!rawDate) return false;
+                const dStr = String(rawDate).trim().substring(0, 10);
+                if (dateFrom && dStr < dateFrom) return false;
+                if (dateTo && dStr > dateTo) return false;
+                return true;
+            });
+        }
+
+        // Sort orders by order_date DESC (empty dates at the tail)
+        wonInquiries.sort((a, b) => {
+            const dateA = (a.order && a.order.order_date) ? String(a.order.order_date).trim() : '';
+            const dateB = (b.order && b.order.order_date) ? String(b.order.order_date).trim() : '';
+
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+
+            if (dateA > dateB) return -1;
+            if (dateA < dateB) return 1;
+            return 0;
+        });
 
         const ordersList = document.getElementById('orders-list');
         if (wonInquiries.length === 0) {
@@ -442,6 +535,14 @@ async function loadOrders() {
     } catch (e) {
         showToast('Error loading orders list', 'error');
     }
+}
+
+function clearOrderDateFilters() {
+    const fromInput = document.getElementById('order-filter-date-from');
+    const toInput = document.getElementById('order-filter-date-to');
+    if (fromInput) fromInput.value = '';
+    if (toInput) toInput.value = '';
+    loadOrders();
 }
 
 // --- ANNUAL REPORT CONTROLLER ---

@@ -78,6 +78,12 @@ def clean_date(val):
             return datetime.strptime(val_str, fmt).strftime("%Y-%m-%d")
         except ValueError:
             continue
+    if val_str.isdigit() and len(val_str) == 5:
+        try:
+            from datetime import timedelta
+            return (datetime(1899, 12, 30) + timedelta(days=int(val_str))).strftime("%Y-%m-%d")
+        except Exception:
+            pass
     return val_str
 
 def get_or_create_client(db: Session, name: str):
@@ -126,23 +132,29 @@ def import_from_excel():
             name = name.strip()
             if not name:
                 name = "Unknown Client"
-            if name not in clients_cache:
-                client = Client(name=name)
-                db.add(client)
-                db.flush()  # Generate client.id
-                clients_cache[name] = client
-            return clients_cache[name]
+            key = name.lower()
+            if key not in clients_cache:
+                client = db.query(Client).filter(Client.name.ilike(name)).first()
+                if not client:
+                    client = Client(name=name)
+                    db.add(client)
+                    db.flush()  # Generate client.id
+                clients_cache[key] = client
+            return clients_cache[key]
 
         def get_or_create_principal_cached(name: str):
             name = name.strip()
             if not name:
                 name = "Unknown Principal"
-            if name not in principals_cache:
-                principal = Principal(name=name)
-                db.add(principal)
-                db.flush()  # Generate principal.id
-                principals_cache[name] = principal
-            return principals_cache[name]
+            key = name.lower()
+            if key not in principals_cache:
+                principal = db.query(Principal).filter(Principal.name.ilike(name)).first()
+                if not principal:
+                    principal = Principal(name=name)
+                    db.add(principal)
+                    db.flush()  # Generate principal.id
+                principals_cache[key] = principal
+            return principals_cache[key]
 
         # In-memory caches for looking up Inquiry by reference
         inquiries_by_ref = {}  # (client_name, principal_name, inquiry_ref) -> Inquiry
@@ -247,6 +259,10 @@ def import_from_excel():
 
         # 2. Parse Won Order Sheets
         processed_order_inquiry_ids = set()
+        orders_by_num = {}   # (client_id, principal_id, order_number_lower) -> (inquiry, order)
+        orders_by_ref = {}   # (client_id, principal_id, inq_ref_lower) -> (inquiry, order)
+        orders_by_quot = {}  # (client_id, principal_id, quot_ref_lower) -> (inquiry, order)
+
         order_sheets = ["Orders", "LESER's Orders", " Bartec Orders", " Bartec Orders 2025"]
         for sheet in order_sheets:
             if sheet not in sheet_names:
@@ -270,11 +286,59 @@ def import_from_excel():
                 quot_ref = clean_str(row.get("Principal Reference (Quotation no.)"))
                 inquiry_date = clean_date(row.get("Inquiry Date"))
                 comments_text = clean_str(row.get("Comments", ""))
+                ord_num = clean_str(row.get("Order Number"))
 
                 tot_val_col = "Total Price" if "Total Price" in row else ("Total Order Value" if "Total Order Value" in row else "Order Value")
                 raw_ord_val = row.get(tot_val_col) if tot_val_col in row else row.get("Order Value")
                 total_val_num = clean_float(raw_ord_val)
                 curr = detect_currency(principal_name, raw_ord_val, f"{inquiry_ref} {quot_ref}", comments_text)
+
+                team_comm = clean_str(row.get("TEAM Commisiion", ""))
+                pay_status = clean_str(row.get("Payment Status", ""))
+
+                # Check if this order was already processed from an earlier order sheet to prevent duplicates
+                ord_num_key = ord_num.lower() if ord_num and ord_num != '-' else ''
+                inq_ref_key = inquiry_ref.lower() if inquiry_ref else ''
+                quot_ref_key = quot_ref.lower() if quot_ref else ''
+
+                existing_order_match = None
+                if ord_num_key:
+                    existing_order_match = orders_by_num.get((client.id, principal.id, ord_num_key)) or orders_by_num.get((principal.id, ord_num_key))
+                if not existing_order_match and inq_ref_key:
+                    existing_order_match = orders_by_ref.get((client.id, principal.id, inq_ref_key)) or orders_by_ref.get((principal.id, inq_ref_key))
+                if not existing_order_match and quot_ref_key:
+                    existing_order_match = orders_by_quot.get((client.id, principal.id, quot_ref_key)) or orders_by_quot.get((principal.id, quot_ref_key))
+
+                if existing_order_match:
+                    # Enrich existing order with any extra details from this sheet
+                    ex_inq, ex_ord = existing_order_match
+                    if not ex_ord.order_number and ord_num:
+                        ex_ord.order_number = ord_num
+                    if not ex_ord.order_date and clean_date(row.get("Order Date")):
+                        ex_ord.order_date = clean_date(row.get("Order Date"))
+                    if (not ex_ord.total_order_value or ex_ord.total_order_value == 0) and total_val_num:
+                        ex_ord.total_order_value = total_val_num
+                    if not ex_ord.delivery_term and clean_str(row.get("Delivery Term")):
+                        ex_ord.delivery_term = clean_str(row.get("Delivery Term"))
+                    if not ex_ord.cargo_x and clean_str(row.get("Cargo-X")):
+                        ex_ord.cargo_x = clean_str(row.get("Cargo-X"))
+                    if not ex_ord.delay_penalty and clean_str(row.get("Delay Penalty")):
+                        ex_ord.delay_penalty = clean_str(row.get("Delay Penalty"))
+                    if not ex_ord.delivery_period and clean_str(row.get("Delivery Period")):
+                        ex_ord.delivery_period = clean_str(row.get("Delivery Period"))
+                    if not ex_ord.expected_delivery_date and clean_date(row.get("Expected Delivery Date")):
+                        ex_ord.expected_delivery_date = clean_date(row.get("Expected Delivery Date"))
+                    if not ex_ord.performance_bond_guarantee and clean_str(row.get("Performance Bond Guarantee")):
+                        ex_ord.performance_bond_guarantee = clean_str(row.get("Performance Bond Guarantee"))
+                    if not ex_ord.team_commission and team_comm:
+                        ex_ord.team_commission = team_comm
+                    if not ex_ord.payment_method and clean_str(row.get("Payment method")):
+                        ex_ord.payment_method = clean_str(row.get("Payment method"))
+                    if not ex_ord.order_confirmation_number and clean_str(row.get("Order Confirmation Number")):
+                        ex_ord.order_confirmation_number = clean_str(row.get("Order Confirmation Number"))
+                    if not ex_ord.order_confirmations and clean_str(row.get("Order Confirmations.")):
+                        ex_ord.order_confirmations = clean_str(row.get("Order Confirmations."))
+                    continue
 
                 # Try to find a matching Inquiry in cache
                 inquiry = None
@@ -313,10 +377,6 @@ def import_from_excel():
 
                 processed_order_inquiry_ids.add(inquiry.id)
 
-                # Check for TEAM Commission
-                team_comm = clean_str(row.get("TEAM Commisiion", ""))
-                pay_status = clean_str(row.get("Payment Status", ""))
-
                 # Deduce Order Status from Payment Status
                 if "Supplied" in pay_status or "Paid" in pay_status:
                     ord_status = "Under Payment" if "Paid" in pay_status else "Shipped"
@@ -325,7 +385,7 @@ def import_from_excel():
 
                 order = Order(
                     id=inquiry.id,
-                    order_number=clean_str(row.get("Order Number")),
+                    order_number=ord_num,
                     order_date=clean_date(row.get("Order Date")),
                     order_value=clean_float(row.get("Order Value")),
                     additionals=clean_float(row.get("Additionals")),
@@ -346,6 +406,17 @@ def import_from_excel():
                     source_sheet=sheet
                 )
                 db.add(order)
+
+                # Register in order lookup maps
+                if ord_num_key:
+                    orders_by_num[(client.id, principal.id, ord_num_key)] = (inquiry, order)
+                    orders_by_num[(principal.id, ord_num_key)] = (inquiry, order)
+                if inq_ref_key:
+                    orders_by_ref[(client.id, principal.id, inq_ref_key)] = (inquiry, order)
+                    orders_by_ref[(principal.id, inq_ref_key)] = (inquiry, order)
+                if quot_ref_key:
+                    orders_by_quot[(client.id, principal.id, quot_ref_key)] = (inquiry, order)
+                    orders_by_quot[(principal.id, quot_ref_key)] = (inquiry, order)
 
                 comments_text = clean_str(row.get("Comments", ""))
                 if comments_text:

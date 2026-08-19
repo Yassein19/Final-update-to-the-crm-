@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Query, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -263,16 +264,29 @@ def get_inquiries(
             qref = inq.quotation_reference.lower() if inq.quotation_reference else ""
             ord_num = inq.order.order_number.lower() if (inq.order and inq.order.order_number) else ""
             contact = inq.contact_person.lower() if inq.contact_person else ""
+            inq_date = str(inq.inquiry_date or "").lower()
+            due_date = str(inq.due_date or "").lower()
+            last_upd = str(inq.last_update or "").lower()
+            ord_date = str(inq.order.order_date or "").lower() if inq.order else ""
+            exp_deliv = str(inq.order.expected_delivery_date or "").lower() if inq.order else ""
             
             if (s in client_name or 
                 s in principal_name or 
                 s in ref or 
                 s in qref or 
                 s in ord_num or 
-                s in contact):
+                s in contact or
+                s in inq_date or
+                s in due_date or
+                s in last_upd or
+                s in ord_date or
+                s in exp_deliv):
                 filtered.append(inq)
+        
+        filtered.sort(key=lambda inq: (1 if (inq.inquiry_date or "").strip() else 0, (inq.inquiry_date or "").strip()), reverse=True)
         return filtered
 
+    inquiries.sort(key=lambda inq: (1 if (inq.inquiry_date or "").strip() else 0, (inq.inquiry_date or "").strip()), reverse=True)
     return inquiries
 
 @app.get("/api/inquiries/{id}", response_model=InquiryOut)

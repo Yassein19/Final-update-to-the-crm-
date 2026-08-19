@@ -196,6 +196,27 @@
                             <option value="">All Principals</option>
                         </select>
                     </div>
+                    <div class="filter-group">
+                        <label>Date By:</label>
+                        <select id="inquiry-filter-date-field" onchange="loadInquiries()">
+                            <option value="inquiry_date">Inquiry Date</option>
+                            <option value="due_date">Due Date</option>
+                            <option value="last_update">Last Update</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>From Date:</label>
+                        <input type="date" id="inquiry-filter-date-from" onchange="loadInquiries()">
+                    </div>
+                    <div class="filter-group">
+                        <label>To Date:</label>
+                        <input type="date" id="inquiry-filter-date-to" onchange="loadInquiries()">
+                    </div>
+                    <div class="filter-group filter-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="clearInquiryDateFilters()" title="Reset date filters">
+                            <i data-lucide="rotate-ccw"></i> Reset Date
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Data Table -->
@@ -260,6 +281,26 @@
                             <option value="Paid">Paid</option>
                             <option value="Under Payment">Under Payment</option>
                         </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Date By:</label>
+                        <select id="order-filter-date-field" onchange="loadOrders()">
+                            <option value="order_date">Order Date</option>
+                            <option value="expected_delivery_date">Expected Delivery</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>From Date:</label>
+                        <input type="date" id="order-filter-date-from" onchange="loadOrders()">
+                    </div>
+                    <div class="filter-group">
+                        <label>To Date:</label>
+                        <input type="date" id="order-filter-date-to" onchange="loadOrders()">
+                    </div>
+                    <div class="filter-group filter-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="clearOrderDateFilters()" title="Reset date filters">
+                            <i data-lucide="rotate-ccw"></i> Reset Date
+                        </button>
                     </div>
                 </div>
 
@@ -353,14 +394,6 @@
                                         <td>Declined Tenders</td>
                                         <td id="rpt-decl-count">0</td>
                                     </tr>
-                                    <tr class="table-row-highlight" style="cursor: pointer;" onclick="switchReportCategory('Inquiries')" title="Click to view Firm Inquiries breakdown in Section 2">
-                                        <td>Firm Offers</td>
-                                        <td id="rpt-firm-count">0</td>
-                                    </tr>
-                                    <tr class="table-row-highlight" style="cursor: pointer;" onclick="switchReportCategory('Budgetary')" title="Click to view Budgetary breakdown in Section 2">
-                                        <td>Budgetary Offers</td>
-                                        <td id="rpt-budg-count">0</td>
-                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -378,6 +411,14 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <tr class="table-row-highlight" style="cursor: pointer;" onclick="switchReportCategory('Inquiries')" title="Click to view Firm Inquiries breakdown in Section 2">
+                                        <td>Firm Offers</td>
+                                        <td id="rpt-firm-count">0</td>
+                                    </tr>
+                                    <tr class="table-row-highlight" style="cursor: pointer;" onclick="switchReportCategory('Budgetary')" title="Click to view Budgetary breakdown in Section 2">
+                                        <td>Budgetary Offers</td>
+                                        <td id="rpt-budg-count">0</td>
+                                    </tr>
                                     <tr style="cursor: pointer;" onclick="switchReportCategory('Ongoing Offers')" title="Click to view Ongoing Offers breakdown in Section 2">
                                         <td>Ongoing / Active Offers</td>
                                         <td id="rpt-ong-count">0</td>
