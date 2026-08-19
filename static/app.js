@@ -313,6 +313,13 @@ async function onGlobalSearch(query) {
                             <button class="btn btn-secondary btn-sm" onclick="viewInquiryDetail(${inq.id})">Details</button>
                             <button class="btn btn-primary btn-sm" onclick="openEditInquiryModal(${inq.id})">Edit</button>
                             <button class="btn btn-danger btn-sm" onclick="softDeleteInquiry(${inq.id})">Delete</button>
+                            ${inq.status === 'Active' ? `
+                                <button class="btn btn-success btn-sm" onclick="triggerTransition(${inq.id}, 'Order')">Order</button>
+                                <button class="btn btn-danger btn-sm" style="background:#ef4444" onclick="triggerTransition(${inq.id}, 'Lost')">Lost</button>
+                                <button class="btn btn-secondary btn-sm" onclick="triggerTransition(${inq.id}, 'Declined')">Declined</button>
+                            ` : `
+                                <button class="btn btn-secondary btn-sm" onclick="triggerTransition(${inq.id}, 'Active')">Reset Active</button>
+                            `}
                         </div>
                     </td>
                 </tr>
