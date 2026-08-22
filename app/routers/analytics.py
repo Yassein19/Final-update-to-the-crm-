@@ -90,13 +90,23 @@ def get_company_report(
     # Values
     inqs_usd = [i.value for i in inqs if i.value and (i.currency or 'USD').upper() == 'USD']
     inqs_eur = [i.value for i in inqs if i.value and (i.currency or 'USD').upper() == 'EUR']
+    inqs_egp = [i.value for i in inqs if i.value and (i.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')]
     avg_inq_usd = round(sum(inqs_usd) / len(inqs_usd), 2) if inqs_usd else 0.0
     avg_inq_eur = round(sum(inqs_eur) / len(inqs_eur), 2) if inqs_eur else 0.0
+    avg_inq_egp = round(sum(inqs_egp) / len(inqs_egp), 2) if inqs_egp else 0.0
 
     orders = [i.order for i in inqs if i.status in ("Won", "Order") and i.order]
+    ords_usd = [o.total_order_value for o in orders if o.total_order_value and (o.currency or 'USD').upper() == 'USD']
+    ords_eur = [o.total_order_value for o in orders if o.total_order_value and (o.currency or 'USD').upper() == 'EUR']
+    ords_egp = [o.total_order_value for o in orders if o.total_order_value and (o.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')]
+    avg_ord_usd = round(sum(ords_usd) / len(ords_usd), 2) if ords_usd else 0.0
+    avg_ord_eur = round(sum(ords_eur) / len(ords_eur), 2) if ords_eur else 0.0
+    avg_ord_egp = round(sum(ords_egp) / len(ords_egp), 2) if ords_egp else 0.0
+
     active_objs = [i for i in inqs if i.status == "Active"]
     pipe_usd = round(sum([i.value for i in active_objs if i.value and (i.currency or 'USD').upper() == 'USD']), 2)
     pipe_eur = round(sum([i.value for i in active_objs if i.value and (i.currency or 'USD').upper() == 'EUR']), 2)
+    pipe_egp = round(sum([i.value for i in active_objs if i.value and (i.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')]), 2)
 
     sales_cycles = [calculate_sales_cycle_days(i) for i in inqs if i.status in ("Won", "Order", "Lost")]
     avg_cycle = round(sum(sales_cycles) / len(sales_cycles), 1) if sales_cycles else 0.0
@@ -105,9 +115,14 @@ def get_company_report(
         win_rate=win_rate,
         avg_inquiry_val_usd=avg_inq_usd,
         avg_inquiry_val_eur=avg_inq_eur,
+        avg_inquiry_val_egp=avg_inq_egp,
+        avg_order_val_usd=avg_ord_usd,
+        avg_order_val_eur=avg_ord_eur,
+        avg_order_val_egp=avg_ord_egp,
         avg_sales_cycle_days=avg_cycle,
         pipeline_value_usd=pipe_usd,
         pipeline_value_eur=pipe_eur,
+        pipeline_value_egp=pipe_egp,
         total_inquiries=total_inqs,
         active_inquiries=active_inqs,
         won_orders=won_inqs,
@@ -302,6 +317,7 @@ def get_time_series(period: str = Query("Monthly", description="Daily, Weekly, M
     won_cnt = []
     pipe_usd = []
     pipe_eur = []
+    pipe_egp = []
     win_rates = []
     sales_cycles = []
 
@@ -317,8 +333,10 @@ def get_time_series(period: str = Query("Monthly", description="Daily, Weekly, M
         active_inqs = [i for i in b_inqs if i.status == "Active"]
         p_usd = sum([i.value for i in active_inqs if i.value and (i.currency or 'USD').upper() == 'USD'])
         p_eur = sum([i.value for i in active_inqs if i.value and (i.currency or 'USD').upper() == 'EUR'])
+        p_egp = sum([i.value for i in active_inqs if i.value and (i.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')])
         pipe_usd.append(round(p_usd, 2))
         pipe_eur.append(round(p_eur, 2))
+        pipe_egp.append(round(p_egp, 2))
         
         wr = round((len(b_won) / len(b_inqs) * 100), 1) if b_inqs else 0.0
         win_rates.append(wr)
@@ -334,6 +352,7 @@ def get_time_series(period: str = Query("Monthly", description="Daily, Weekly, M
         won_orders_count=won_cnt,
         pipeline_usd=pipe_usd,
         pipeline_eur=pipe_eur,
+        pipeline_egp=pipe_egp,
         win_rate=win_rates,
         avg_sales_cycle_days=sales_cycles
     )

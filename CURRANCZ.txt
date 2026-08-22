@@ -1,0 +1,93 @@
+======================================================================
+=== RECALCULATED SUMMARY BY SHEET & CURRENCY ===
+======================================================================
+
+--- Sheet: Inquires ---
+  USD : Count =  60 | Total =   23,089,851.92
+  EUR : Count = 220 | Total =   26,923,599.10
+  EGP : Count =  36 | Total =    6,586,964.07
+
+--- Sheet: Declined Inquiries ---
+  USD : Count =   1 | Total =            0.00
+  EUR : Count =  43 | Total =            0.00
+  EGP : Count =   0 | Total =            0.00
+
+--- Sheet: Lost Inquiries ---
+  USD : Count =   3 | Total =    1,663,151.24
+  EUR : Count =  11 | Total =      206,537.87
+  EGP : Count =   1 | Total =    2,191,251.30
+
+--- Sheet: Orders ---
+  USD : Count =  19 | Total =    1,255,597.45
+  EUR : Count =  77 | Total =    4,280,080.43
+  EGP : Count =   1 | Total =      528,000.00
+
+--- Sheet: LESER's Orders ---
+  USD : Count =   7 | Total =      238,482.75
+  EUR : Count =  48 | Total =      443,867.38
+  EGP : Count =   0 | Total =            0.00
+
+--- Sheet:  Bartec Orders ---
+  USD : Count =   5 | Total =      685,124.16
+  EUR : Count =  54 | Total =    1,764,718.91
+  EGP : Count =   4 | Total =      651,506.47
+
+--- Sheet:  Bartec Orders 2025 ---
+  USD : Count =   1 | Total =       17,472.80
+  EUR : Count =  13 | Total =      538,948.76
+  EGP : Count =   0 | Total =            0.00
+
+======================================================================
+=== PIPELINE & ORDERS TOTALS SEPARATED BY CURRENCY ===
+======================================================================
+Active Inquiries (Pipeline):
+  USD: $23,089,851.92
+  EUR: €26,923,599.10
+  EGP: 6,586,964.07 EGP
+
+Won Orders (Orders Sheet):
+  USD: $1,255,597.45
+  EUR: €4,280,080.43
+  EGP: 528,000.00 EGP
+
+======================================================================
+=== EGP INQUIRIES LIST & VALUES (30 ROWS) ===
+======================================================================
+Row  51 | Client: ETHYDCO                      | Principal: Bartec          | Value:       4,207.50 EGP | Quot: Q21026793/25 REV.  | Ref: ENQ#273/2025                
+Row  66 | Client: Global Technical Services    | Principal: Team            | Value:     294,434.89 EGP | Quot: SE-07-25           | Ref: (Bartec) #752139 #PETROSAFE-
+Row  80 | Client: Trade Link                   | Principal: FHT             | Value:           0.00 EGP | Quot: nan                | Ref: globe valve - RFQ : 40000064
+Row  84 | Client: Al Meshka                    | Principal: Bartec          | Value:      16,900.50 EGP | Quot: Q21027947/25 REV.  | Ref: RFQ 284/DAE/2025 - Junction 
+Row  87 | Client: Al Wefaq for trading and sup | Principal: TE.MA. S.R.L    | Value:           0.00 EGP | Quot: nan                | Ref: RFQ- TE.MA.-W25180OCP       
+Row  99 | Client: Sinamix                      | Principal: As Schneider    | Value:       4,927.02 EGP | Quot: 4Q2500647 REV. 1   | Ref: Manifold Prices             
+Row 103 | Client: Unknown Client               | Principal: Team            | Value:   4,162,647.89 EGP | Quot: 10478150           | Ref: nan                         
+Row 128 | Client: Giza Systems Corporate       | Principal: Bartec          | Value:      16,232.19 EGP | Quot: Q21031570/25 REV.  | Ref: RFQ - Agiba 12 WHCPs - Barte
+Row 136 | Client: Petrojet                     | Principal: Bartec          | Value:     159,634.90 EGP | Quot: Q21033081/25 REV.  | Ref: 303/OLA/2025 -MELEIHA       
+Row 137 | Client: Team                         | Principal: ASF             | Value:     253,711.45 EGP | Quot: 1070-10-25 Rev.3   | Ref: 303/OLA/2025 -MELEIHA  (Ligh
+Row 138 | Client: EGYBEV                       | Principal: Leser           | Value:       1,884.60 EGP | Quot: 10496330           | Ref: Safety valves for the Boiler
+Row 166 | Client: Creative Partners Co.        | Principal: Bartec          | Value:     394,009.20 EGP | Quot: Q21034671/25 REV.  | Ref: PJ2512-0700-EX-Junction box 
+Row 180 | Client: SAFE TECHNICAL SUPPLY CO. LL | Principal: Leser           | Value:           0.00 EGP | Quot: nan                | Ref: ST-CC-0937-THERMAL SAFETY VA
+Row 204 | Client: SBSPROTECH                   | Principal: Team            | Value:      89,511.82 EGP | Quot: SE-06-26           | Ref: nan                         
+Row 207 | Client: Team                         | Principal: Bartec          | Value:       7,450.00 EGP | Quot: QU-600002480 Rev.0 | Ref: Panel PC - Bartec           
+Row 209 | Client: Dynamic                      | Principal: Team            | Value:           0.00 EGP | Quot: nan                | Ref: RFQ # 28271                 
+Row 210 | Client: Air Liquide                  | Principal: Leser           | Value:         726.70 EGP | Quot: 10507908           | Ref: RFQ: BOR 131024             
+Row 224 | Client: Team                         | Principal: Bartec          | Value:       8,515.00 EGP | Quot: QU-600002556 Rev.0 | Ref: Panel HMI - Bartec          
+Row 228 | Client: Rashpetco                    | Principal: Bartec          | Value:           0.00 EGP | Quot: nan                | Ref: Burullus New Request        
+Row 237 | Client: BDR INDUSTRIAL SERVICES      | Principal: Leser           | Value:       5,350.50 EGP | Quot: 10513757           | Ref: BDR INQ: 295-26-PF          
+Row 248 | Client: Kayan Automation Solution Tr | Principal: Leser           | Value:       4,502.00 EGP | Quot: 10516292           | Ref: Kayan Inq# 140426 - Oil Plan
+Row 254 | Client: Tricom controls              | Principal: Team            | Value:           0.00 EGP | Quot: nan                | Ref: (Bartec) Petrobel_OPMS25M158
+Row 255 | Client: Tricom controls              | Principal: Team            | Value:           0.00 EGP | Quot: nan                | Ref: (Bartec) (veri-tech internat
+Row 266 | Client: Electro Hydraulic Automation | Principal: Team            | Value:   1,141,914.66 EGP | Quot: SE-18-26           | Ref: nan                         
+Row 269 | Client: Enppi                        | Principal: Leser           | Value:           0.00 EGP | Quot: 10519148           | Ref: 5421-965; ERC INTERCONNECTIN
+Row 271 | Client: Diverse                      | Principal: Leser           | Value:       6,896.40 EGP | Quot: 10519606 Rev.01    | Ref: Inq.#3/2026                 
+Row 273 | Client: H&M Engineering              | Principal: Leser           | Value:       3,895.35 EGP | Quot: 10520244           | Ref: RFQ for Safety valve //MA-16
+Row 277 | Client: GIS                          | Principal: Bartec          | Value:           0.00 EGP | Quot: Q21040609/26 REV.  | Ref: RFQ | BARTEC  | Ex Control C
+Row 279 | Client: Petrojet                     | Principal: Sanco           | Value:           0.00 EGP | Quot: nan                | Ref: 2808-OLA-2026 - Fire fightin
+Row 284 | Client: Diverse                      | Principal: Leser           | Value:       7,457.50 EGP | Quot: 10523022           | Ref: Inq.#4/2026                 
+Row 296 | Client: Black Bear International Tra | Principal: Leser           | Value:           0.00 EGP | Quot: nan                | Ref: Request via the LESER contac
+Row 303 | Client: ISES                         | Principal: Leser           | Value:       2,154.00 EGP | Quot: 10528066           | Ref: RFQ : ME: 3977              
+Row 305 | Client: Petrosannan Company          | Principal: Severn          | Value:           0.00 EGP | Quot: nan                | Ref: Request for Quotation (RFQ) 
+Row 308 | Client: AMCO                         | Principal: Team            | Value:           0.00 EGP | Quot: SE-24-26           | Ref: Request via the LESER contac
+Row 311 | Client: Siemens Energy               | Principal: Sanco           | Value:           0.00 EGP | Quot: nan                | Ref: Siemens Energy - Bani Suef -
+Row 319 | Client: South Dabaa Petroleum Compan | Principal: Unknown Princip | Value:           0.00 EGP | Quot: nan                | Ref: Dapetco RFQ # SDIN 13/2026  
+
+TOTAL EGP INQUIRIES VALUE: 6,586,964.07 EGP (Count: 36)

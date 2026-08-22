@@ -76,11 +76,11 @@
                 <div class="header-profile">
                     <div class="stat-badge">
                         <span class="badge-label">Active Value:</span>
-                        <span class="badge-val text-blue" id="header-active-val">$0 | €0</span>
+                        <span class="badge-val text-blue" id="header-active-val">$0 | €0 | 0 EGP</span>
                     </div>
                     <div class="stat-badge">
                         <span class="badge-label">Order Value:</span>
-                        <span class="badge-val text-green" id="header-won-val">$0 | €0</span>
+                        <span class="badge-val text-green" id="header-won-val">$0 | €0 | 0 EGP</span>
                     </div>
                     <div class="profile-avatar">
                         <span>👤</span>
@@ -102,7 +102,7 @@
                         <div class="metric-info">
                             <span class="metric-label">Active Inquiries</span>
                             <h2 class="metric-value" id="stats-active">0</h2>
-                            <span class="metric-sub" id="stats-active-val">$0 | €0</span>
+                            <span class="metric-sub" id="stats-active-val">$0 | €0 | 0 EGP</span>
                         </div>
                     </div>
                     <div class="metric-card">
@@ -110,7 +110,7 @@
                         <div class="metric-info">
                             <span class="metric-label">Orders</span>
                             <h2 class="metric-value" id="stats-won">0</h2>
-                            <span class="metric-sub" id="stats-won-val">$0 | €0</span>
+                            <span class="metric-sub" id="stats-won-val">$0 | €0 | 0 EGP</span>
                         </div>
                     </div>
                     <div class="metric-card">
@@ -118,7 +118,7 @@
                         <div class="metric-info">
                             <span class="metric-label">Lost Inquiries</span>
                             <h2 class="metric-value" id="stats-lost">0</h2>
-                            <span class="metric-sub" id="stats-lost-val">$0 | €0</span>
+                            <span class="metric-sub" id="stats-lost-val">$0 | €0 | 0 EGP</span>
                         </div>
                     </div>
                     <div class="metric-card">
@@ -504,7 +504,7 @@
                                 <span style="font-size: 0.85rem; color: var(--text-muted);">Tabular breakdown &
                                     graphical analysis</span>
                             </div>
-                            <div style="display: flex; gap: 1.5rem;">
+                            <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
                                 <div><span
                                         style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Total
                                         Count</span>
@@ -522,6 +522,12 @@
                                         Value (€)</span>
                                     <div id="cat-stat-eur"
                                         style="font-size: 1.25rem; font-weight: 700; color: #60a5fa;">€0.00</div>
+                                </div>
+                                <div><span
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">EGP
+                                        Value (EGP)</span>
+                                    <div id="cat-stat-egp"
+                                        style="font-size: 1.25rem; font-weight: 700; color: #f59e0b;">0.00 EGP</div>
                                 </div>
                             </div>
                         </div>
@@ -571,6 +577,7 @@
                                         <th>Percentage (%)</th>
                                         <th>USD Value ($)</th>
                                         <th>EUR Value (€)</th>
+                                        <th>EGP Value (EGP)</th>
                                     </tr>
                                 </thead>
                                 <tbody id="cat-summary-tbody">
@@ -899,6 +906,7 @@
                             <select id="inq-currency">
                                 <option value="USD">USD ($)</option>
                                 <option value="EUR">EUR (€)</option>
+                                <option value="EGP">EGP (LE)</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1044,6 +1052,7 @@
                             <select id="ord-currency">
                                 <option value="USD">USD ($)</option>
                                 <option value="EUR">EUR (€)</option>
+                                <option value="EGP">EGP (LE)</option>
                             </select>
                         </div>
                         <div class="form-group">

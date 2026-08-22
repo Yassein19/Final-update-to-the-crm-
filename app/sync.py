@@ -9,20 +9,27 @@ from app.database import SessionLocal, engine, Base
 from app.models import Client, Principal, Inquiry, Order, Comment, ActivityLog
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DRIVE_EXCEL = r"G:\My Drive\Salma Elwakeel\Status\STATUS 2025-2026.xlsx"
-LOCAL_EXCEL = os.path.join(BASE_DIR, "STATUS 2025-2026.xlsx")
-DESKTOP_EXCEL = r"c:\Users\yassein ahmed\OneDrive\Desktop\Team Eng\STATUS 2025-2026.xlsx"
+CANDIDATE_PATHS = [
+    os.path.join(BASE_DIR, "STATUS 2025-2026 .xlsx"),
+    os.path.join(BASE_DIR, "STATUS 2025-2026.xlsx"),
+    r"G:\My Drive\Salma Elwakeel\Status\STATUS 2025-2026.xlsx",
+    r"G:\My Drive\Salma Elwakeel\Status\STATUS 2025-2026 .xlsx",
+    r"c:\Users\yassein ahmed\OneDrive\Desktop\CRM\Final-update-to-the-crm-\STATUS 2025-2026 .xlsx",
+    r"c:\Users\yassein ahmed\OneDrive\Desktop\Team Eng\STATUS 2025-2026.xlsx"
+]
 
-if os.path.exists(DRIVE_EXCEL):
-    EXCEL_PATH = DRIVE_EXCEL
-elif os.path.exists(LOCAL_EXCEL):
-    EXCEL_PATH = LOCAL_EXCEL
-else:
-    EXCEL_PATH = DESKTOP_EXCEL
+EXCEL_PATH = next((p for p in CANDIDATE_PATHS if os.path.exists(p)), CANDIDATE_PATHS[0])
 
 EURO_PRINCIPALS = [
     'leser', 'bartec', 'sanco', 'as schneider', 'adams', 'dekomte', 'te.ma', 'fht', 'dungs'
 ]
+
+EGP_INQUIRY_EXCEL_ROWS = {
+    80, 84, 87, 99, 128, 136, 137, 138, 166, 180, 204, 209, 210, 224, 228, 
+    237, 248, 254, 255, 266, 269, 271, 273, 279, 284, 296, 303, 305, 311, 319,
+    # Explicitly labeled in Excel comments/references
+    51, 66, 103, 207, 277, 308
+}
 
 def clean_str(val):
     if pd.isna(val) or val is None:
@@ -38,24 +45,31 @@ def clean_float(val):
         return 0.0
     try:
         # Strip out currency symbols if present in number column
-        val_str = str(val).replace("$", "").replace("€", "").replace("USD", "").replace("EUR", "").replace(",", "").strip()
+        val_str = str(val).replace("$", "").replace("€", "").replace("USD", "").replace("EUR", "").replace("EGP", "").replace(",", "").strip()
         return float(val_str)
     except ValueError:
         return 0.0
 
-def detect_currency(principal_name, val_raw, ref_text="", comment_text="", default_curr="USD"):
+def detect_currency(principal_name, val_raw, ref_text="", comment_text="", default_curr="USD", excel_row=None, sheet_name=""):
+    if sheet_name == "Inquires" and excel_row is not None and excel_row in EGP_INQUIRY_EXCEL_ROWS:
+        return "EGP"
+
     val_str = str(val_raw or '')
     combined_text = f"{val_str} {ref_text} {comment_text}".upper()
     
-    # 1. Explicit Dollar markers in text
+    # 1. Explicit EGP markers in text
+    if 'EGP' in combined_text or ' L.E' in combined_text or ' LE ' in combined_text or 'POUND' in combined_text:
+        return "EGP"
+
+    # 2. Explicit Dollar markers in text
     if 'USD' in combined_text or '$' in combined_text or 'DOLLAR' in combined_text:
         return "USD"
         
-    # 2. Explicit Euro markers in text or value cell string
+    # 3. Explicit Euro markers in text or value cell string
     if '€' in combined_text or 'EUR' in combined_text or 'EURO' in combined_text:
         return "EUR"
         
-    # 3. Deduce from Principal name
+    # 4. Deduce from Principal name
     p_lower = str(principal_name or '').strip().lower()
     if p_lower:
         for euro_p in EURO_PRINCIPALS:
@@ -172,12 +186,13 @@ def import_from_excel():
                 print(f"Warning: Sheet {sheet} not found in Excel.")
                 continue
             
-            df = pd.read_excel(xls, sheet_name=sheet, header=7)
+            df = pd.read_excel(xls, sheet_name=sheet, header=7, usecols="A:P")
             # Remove entirely empty rows
             df = df.dropna(how='all')
             print(f"Processing sheet {sheet}: {len(df)} rows found.")
 
-            for _, row in df.iterrows():
+            for idx, row in df.iterrows():
+                excel_row = idx + 9
                 principal_name = clean_str(row.get("Principal", ""))
                 client_name = clean_str(row.get("Client", ""))
                 if not principal_name and not client_name:
@@ -192,7 +207,7 @@ def import_from_excel():
 
                 raw_val = row.get(" Values") if " Values" in row else row.get("Values")
                 val_num = clean_float(raw_val)
-                curr = detect_currency(principal_name, raw_val, f"{inq_ref} {quot_ref}", comments_text)
+                curr = detect_currency(principal_name, raw_val, f"{inq_ref} {quot_ref}", comments_text, excel_row=excel_row, sheet_name=sheet)
 
                 # Determine offer type (Firm vs Budgetary)
                 offer_type = "Budgetary" if ("budget" in inq_ref.lower() or "budget" in quot_ref.lower()) else "Firm"
@@ -269,11 +284,12 @@ def import_from_excel():
                 print(f"Warning: Sheet {sheet} not found in Excel.")
                 continue
             
-            df = pd.read_excel(xls, sheet_name=sheet, header=6)
+            df = pd.read_excel(xls, sheet_name=sheet, header=6, usecols="A:W")
             df = df.dropna(how='all')
             print(f"Processing sheet {sheet}: {len(df)} rows.")
 
-            for _, row in df.iterrows():
+            for idx, row in df.iterrows():
+                excel_row = idx + 8
                 client_name = clean_str(row.get("Client", ""))
                 principal_name = clean_str(row.get("Principal", ""))
                 if not client_name and not principal_name:
@@ -291,7 +307,7 @@ def import_from_excel():
                 tot_val_col = "Total Price" if "Total Price" in row else ("Total Order Value" if "Total Order Value" in row else "Order Value")
                 raw_ord_val = row.get(tot_val_col) if tot_val_col in row else row.get("Order Value")
                 total_val_num = clean_float(raw_ord_val)
-                curr = detect_currency(principal_name, raw_ord_val, f"{inquiry_ref} {quot_ref}", comments_text)
+                curr = detect_currency(principal_name, raw_ord_val, f"{inquiry_ref} {quot_ref}", comments_text, excel_row=excel_row, sheet_name=sheet)
 
                 team_comm = clean_str(row.get("TEAM Commisiion", ""))
                 pay_status = clean_str(row.get("Payment Status", ""))

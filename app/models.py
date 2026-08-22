@@ -30,7 +30,7 @@ class Inquiry(Base):
     inquiry_reference = Column(Text, nullable=True)
     quotation_reference = Column(Text, nullable=True)
     value = Column(Float, nullable=True)
-    currency = Column(String, nullable=False, default="USD") # USD, EUR
+    currency = Column(String, nullable=False, default="USD") # USD, EUR, EGP
     offer_type = Column(String, nullable=False, default="Firm") # Firm, Budgetary
     submission_method = Column(String, nullable=True)
     status = Column(String, nullable=False, default="Active") # Active, Order, Lost, Declined
@@ -58,7 +58,7 @@ class Order(Base):
     order_value = Column(Float, nullable=True)
     additionals = Column(Float, nullable=True)
     total_order_value = Column(Float, nullable=True)
-    currency = Column(String, nullable=False, default="USD") # USD, EUR
+    currency = Column(String, nullable=False, default="USD") # USD, EUR, EGP
     order_confirmation_number = Column(String, nullable=True)
     team_commission = Column(String, nullable=True)
     order_confirmations = Column(Text, nullable=True)

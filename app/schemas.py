@@ -117,16 +117,20 @@ class DashboardStats(BaseModel):
     declined_inquiries: int
     total_value_active_usd: float
     total_value_active_eur: float
+    total_value_active_egp: float = 0.0
     total_value_won_usd: float
     total_value_won_eur: float
+    total_value_won_egp: float = 0.0
     total_value_lost_usd: float
     total_value_lost_eur: float
+    total_value_lost_egp: float = 0.0
     due_this_week_alerts: List[InquiryOut]
     near_delivery_alerts: List[InquiryOut]
 
 class ValueBreakdown(BaseModel):
     usd: float = 0.0
     eur: float = 0.0
+    egp: float = 0.0
 
 class CategoryStats(BaseModel):
     count: int = 0
@@ -138,12 +142,14 @@ class CategoryDetailItem(BaseModel):
     percentage: float = 0.0
     usd_value: float = 0.0
     eur_value: float = 0.0
+    egp_value: float = 0.0
 
 class CategoryDetailView(BaseModel):
     category_name: str
     total_count: int = 0
     total_usd: float = 0.0
     total_eur: float = 0.0
+    total_egp: float = 0.0
     principal_breakdown: List[CategoryDetailItem] = []
     monthly_frequency: Dict[str, int] = {}
 
@@ -175,11 +181,14 @@ class CompanyKPIs(BaseModel):
     win_rate: float = 0.0
     avg_inquiry_val_usd: float = 0.0
     avg_inquiry_val_eur: float = 0.0
+    avg_inquiry_val_egp: float = 0.0
     avg_order_val_usd: float = 0.0
     avg_order_val_eur: float = 0.0
+    avg_order_val_egp: float = 0.0
     avg_sales_cycle_days: float = 0.0
     pipeline_value_usd: float = 0.0
     pipeline_value_eur: float = 0.0
+    pipeline_value_egp: float = 0.0
     total_inquiries: int = 0
     active_inquiries: int = 0
     won_orders: int = 0
@@ -225,6 +234,7 @@ class TimeSeriesData(BaseModel):
     won_orders_count: List[int] = []
     pipeline_usd: List[float] = []
     pipeline_eur: List[float] = []
+    pipeline_egp: List[float] = []
     win_rate: List[float] = []
     avg_sales_cycle_days: List[float] = []
 

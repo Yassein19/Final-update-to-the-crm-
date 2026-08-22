@@ -46,17 +46,24 @@ function showToast(message, type = 'success') {
 // Format Single Currency
 function formatMoney(value, currency = 'USD') {
     if (value === null || value === undefined) value = 0;
-    const curr = (currency || 'USD').toUpperCase();
+    const curr = (currency || 'USD').toUpperCase().trim();
     if (curr === 'EUR') {
         return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
+    }
+    if (curr === 'EGP' || curr === 'LE' || curr === 'L.E') {
+        return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + ' EGP';
     }
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 }
 
-// Format Dual Currency string ($X | €Y)
-function formatDualMoney(usdVal, eurVal) {
+// Format Multi Currency string ($X | €Y | Z EGP)
+function formatDualMoney(usdVal, eurVal, egpVal = 0) {
     const usd = formatMoney(usdVal, 'USD');
     const eur = formatMoney(eurVal, 'EUR');
+    const egp = formatMoney(egpVal, 'EGP');
+    if (egpVal && Number(egpVal) > 0) {
+        return `${usd} | ${eur} | ${egp}`;
+    }
     return `${usd} | ${eur}`;
 }
 
@@ -120,18 +127,18 @@ async function loadDashboardData() {
         const data = await res.json();
 
         // Update header values
-        document.getElementById('header-active-val').innerText = formatDualMoney(data.total_value_active_usd, data.total_value_active_eur);
-        document.getElementById('header-won-val').innerText = formatDualMoney(data.total_value_won_usd, data.total_value_won_eur);
+        document.getElementById('header-active-val').innerText = formatDualMoney(data.total_value_active_usd, data.total_value_active_eur, data.total_value_active_egp);
+        document.getElementById('header-won-val').innerText = formatDualMoney(data.total_value_won_usd, data.total_value_won_eur, data.total_value_won_egp);
 
         // Update stats cards
         document.getElementById('stats-active').innerText = data.active_inquiries;
-        document.getElementById('stats-active-val').innerText = formatDualMoney(data.total_value_active_usd, data.total_value_active_eur);
+        document.getElementById('stats-active-val').innerText = formatDualMoney(data.total_value_active_usd, data.total_value_active_eur, data.total_value_active_egp);
 
         document.getElementById('stats-won').innerText = data.won_inquiries;
-        document.getElementById('stats-won-val').innerText = formatDualMoney(data.total_value_won_usd, data.total_value_won_eur);
+        document.getElementById('stats-won-val').innerText = formatDualMoney(data.total_value_won_usd, data.total_value_won_eur, data.total_value_won_egp);
 
         document.getElementById('stats-lost').innerText = data.lost_inquiries;
-        document.getElementById('stats-lost-val').innerText = formatDualMoney(data.total_value_lost_usd, data.total_value_lost_eur);
+        document.getElementById('stats-lost-val').innerText = formatDualMoney(data.total_value_lost_usd, data.total_value_lost_eur, data.total_value_lost_egp);
 
         document.getElementById('stats-declined').innerText = data.declined_inquiries;
 
@@ -657,6 +664,9 @@ function renderCategoryView(catName) {
         const eurEl = document.getElementById('cat-stat-eur');
         if (eurEl) eurEl.innerText = formatMoney(viewData.total_eur || 0, 'EUR');
 
+        const egpEl = document.getElementById('cat-stat-egp');
+        if (egpEl) egpEl.innerText = formatMoney(viewData.total_egp || 0, 'EGP');
+
         // 1. Summary Table
         const tbody = document.getElementById('cat-summary-tbody');
         const tfoot = document.getElementById('cat-summary-tfoot');
@@ -664,13 +674,14 @@ function renderCategoryView(catName) {
 
         if (tbody) {
             if (breakdown.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 1.5rem;">No record entries found under <strong>${catName}</strong>.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding: 1.5rem;">No record entries found under <strong>${catName}</strong>.</td></tr>`;
                 if (tfoot) tfoot.innerHTML = '';
             } else {
                 tbody.innerHTML = breakdown.map(item => {
                     const pctVal = (Number(item?.percentage) || 0).toFixed(1);
                     const usdVal = formatMoney(item?.usd_value || 0, 'USD');
                     const eurVal = formatMoney(item?.eur_value || 0, 'EUR');
+                    const egpVal = formatMoney(item?.egp_value || 0, 'EGP');
                     const pName = item?.name || 'Unknown Principal';
                     const cnt = item?.count || 0;
                     return `
@@ -680,6 +691,7 @@ function renderCategoryView(catName) {
                             <td><span class="status-badge" style="background:rgba(59,130,246,0.1); color:#60a5fa">${pctVal}%</span></td>
                             <td>${usdVal}</td>
                             <td>${eurVal}</td>
+                            <td>${egpVal}</td>
                         </tr>
                     `;
                 }).join('');
@@ -692,6 +704,7 @@ function renderCategoryView(catName) {
                             <td>100.0%</td>
                             <td>${formatMoney(viewData.total_usd || 0, 'USD')}</td>
                             <td>${formatMoney(viewData.total_eur || 0, 'EUR')}</td>
+                            <td>${formatMoney(viewData.total_egp || 0, 'EGP')}</td>
                         </tr>
                     `;
                 }

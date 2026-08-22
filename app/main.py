@@ -36,20 +36,23 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     lost_inquiries = db.query(Inquiry).filter(Inquiry.status == "Lost", Inquiry.is_deleted == False).count()
     declined_inquiries = db.query(Inquiry).filter(Inquiry.status == "Declined", Inquiry.is_deleted == False).count()
 
-    # Active Value (USD vs EUR)
+    # Active Value (USD vs EUR vs EGP)
     active_objs = db.query(Inquiry).filter(Inquiry.status == "Active", Inquiry.is_deleted == False).all()
     total_value_active_usd = sum([obj.value for obj in active_objs if obj.value is not None and (obj.currency or 'USD').upper() == 'USD'])
     total_value_active_eur = sum([obj.value for obj in active_objs if obj.value is not None and (obj.currency or 'USD').upper() == 'EUR'])
+    total_value_active_egp = sum([obj.value for obj in active_objs if obj.value is not None and (obj.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')])
 
-    # Won Value (USD vs EUR)
+    # Won Value (USD vs EUR vs EGP)
     won_objs = db.query(Order).join(Inquiry).filter(Inquiry.status.in_(["Won", "Order"]), Inquiry.is_deleted == False).all()
     total_value_won_usd = sum([obj.total_order_value for obj in won_objs if obj.total_order_value is not None and (obj.currency or 'USD').upper() == 'USD'])
     total_value_won_eur = sum([obj.total_order_value for obj in won_objs if obj.total_order_value is not None and (obj.currency or 'USD').upper() == 'EUR'])
+    total_value_won_egp = sum([obj.total_order_value for obj in won_objs if obj.total_order_value is not None and (obj.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')])
 
-    # Lost Value (USD vs EUR)
+    # Lost Value (USD vs EUR vs EGP)
     lost_objs = db.query(Inquiry).filter(Inquiry.status == "Lost", Inquiry.is_deleted == False).all()
     total_value_lost_usd = sum([obj.value for obj in lost_objs if obj.value is not None and (obj.currency or 'USD').upper() == 'USD'])
     total_value_lost_eur = sum([obj.value for obj in lost_objs if obj.value is not None and (obj.currency or 'USD').upper() == 'EUR'])
+    total_value_lost_egp = sum([obj.value for obj in lost_objs if obj.value is not None and (obj.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')])
 
     # Alerts: Inquiries due this week or overdue
     due_this_week = []
@@ -87,26 +90,31 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         declined_inquiries=declined_inquiries,
         total_value_active_usd=total_value_active_usd,
         total_value_active_eur=total_value_active_eur,
+        total_value_active_egp=total_value_active_egp,
         total_value_won_usd=total_value_won_usd,
         total_value_won_eur=total_value_won_eur,
+        total_value_won_egp=total_value_won_egp,
         total_value_lost_usd=total_value_lost_usd,
         total_value_lost_eur=total_value_lost_eur,
+        total_value_lost_egp=total_value_lost_egp,
         due_this_week_alerts=due_this_week[:10],
         near_delivery_alerts=near_delivery[:10]
     )
 
 @app.get("/api/annual-report", response_model=AnnualReportData)
 def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db)):
-    # Helper to calculate count and dual-currency breakdown
+    # Helper to calculate count and three-currency breakdown
     def calc_stats(inquiries_list):
         usd_val = sum([i.value for i in inquiries_list if i.value and (i.currency or 'USD').upper() == 'USD'])
         eur_val = sum([i.value for i in inquiries_list if i.value and (i.currency or 'USD').upper() == 'EUR'])
-        return CategoryStats(count=len(inquiries_list), values=ValueBreakdown(usd=usd_val, eur=eur_val))
+        egp_val = sum([i.value for i in inquiries_list if i.value and (i.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')])
+        return CategoryStats(count=len(inquiries_list), values=ValueBreakdown(usd=usd_val, eur=eur_val, egp=egp_val))
 
     def calc_order_stats(orders_list):
         usd_val = sum([o.total_order_value for o in orders_list if o.total_order_value and (o.currency or 'USD').upper() == 'USD'])
         eur_val = sum([o.total_order_value for o in orders_list if o.total_order_value and (o.currency or 'USD').upper() == 'EUR'])
-        return CategoryStats(count=len(orders_list), values=ValueBreakdown(usd=usd_val, eur=eur_val))
+        egp_val = sum([o.total_order_value for o in orders_list if o.total_order_value and (o.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')])
+        return CategoryStats(count=len(orders_list), values=ValueBreakdown(usd=usd_val, eur=eur_val, egp=egp_val))
 
     # Base inquiry query
     inq_query = db.query(Inquiry)
@@ -151,12 +159,13 @@ def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db))
         tot_count = len(items)
         usd_val = sum([i.value for i in items if i.value and str(i.currency or 'USD').upper() == 'USD'])
         eur_val = sum([i.value for i in items if i.value and str(i.currency or 'USD').upper() == 'EUR'])
+        egp_val = sum([i.value for i in items if i.value and str(i.currency or 'USD').upper() in ('EGP', 'LE', 'L.E')])
 
         p_map = {}
         for i in items:
             p_name = i.principal.name if (i.principal and i.principal.name) else "Unknown Principal"
             if p_name not in p_map:
-                p_map[p_name] = {"count": 0, "usd": 0.0, "eur": 0.0}
+                p_map[p_name] = {"count": 0, "usd": 0.0, "eur": 0.0, "egp": 0.0}
             p_map[p_name]["count"] += 1
             val = i.value or 0.0
             curr = str(i.currency or 'USD').upper()
@@ -164,6 +173,8 @@ def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db))
                 p_map[p_name]["usd"] += val
             elif curr == 'EUR':
                 p_map[p_name]["eur"] += val
+            elif curr in ('EGP', 'LE', 'L.E'):
+                p_map[p_name]["egp"] += val
 
         p_items = []
         for p_name, stats in p_map.items():
@@ -173,7 +184,8 @@ def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db))
                 count=stats["count"],
                 percentage=pct,
                 usd_value=round(stats["usd"], 2),
-                eur_value=round(stats["eur"], 2)
+                eur_value=round(stats["eur"], 2),
+                egp_value=round(stats["egp"], 2)
             ))
         p_items.sort(key=lambda x: x.count, reverse=True)
 
@@ -201,6 +213,7 @@ def get_annual_report(year: Optional[str] = None, db: Session = Depends(get_db))
             total_count=tot_count,
             total_usd=round(usd_val, 2),
             total_eur=round(eur_val, 2),
+            total_egp=round(egp_val, 2),
             principal_breakdown=p_items,
             monthly_frequency=monthly_freq
         )
